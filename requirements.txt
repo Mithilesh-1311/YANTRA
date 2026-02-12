@@ -1,0 +1,375 @@
+--- Content of AI-Enabled Smart Grid Management System Hackathon.pdf ---
+Page 1:
+FURIOUS FIVEPhone NumberRegistration NumberTeam Leader Name840403489324BAI0353Ratul Pal
+
+Page 2:
+Problem Statement CodeAI Enabled Smart Grid Management with Renewable Energy PredictionProblem StatementHECEE001
+
+Page 3:
+Proposed Solution:Our proposed solution is an AI-enabled smart microgrid designed for a small cluster of buildings, each equipped with solar panels and battery storage. Every building runs a local deep learning model to predict its short-term energy demand and renewable generation. These models are improved collaboratively using federated learning, ensuring better predictions without sharing raw energy data. Based on these predictions, buildings with surplus energy can directly trade with deficit buildings through blockchain based peer-to-peer energy trading, ensuring transparent and secure settlements. When no immediate local demand exists, surplus energy is temporarily stored at a central mini-grid controller instead of being instantly exported to the main grid. The mini-grid uses a global prediction model to forecast overall area-level demand and intelligently decides whether to retain energy locally or interact with the main power grid. This predictive, cost-aware energy management approach prioritizes local renewable usage, reduces dependency on the main grid, and enables an efficient, decentralized, and resilient energy ecosystem.
+
+Page 4:
+Novelty/Uniqueness:The novelty of our solution lies in its AI driven forecasting and intelligent multi-level architecture. Unlike traditional smart grid systems that responds to real time surplus or deficit, our system forecasts future energy needs using local and global deep learning models before deciding when and where energy should flow. Federated learning enables buildings with different usage patterns to effectively improve predictions without sharing raw data, while blockchain is used for transparent peer-to-peer energy trading. This combination transforms a group of buildings into an intelligent local energy economy that prioritizes renewable utilization, reduces grid dependency, and makes time aware intelligent energy decisions.
+
+Page 5:
+Block Diagram/Flow Chart:
+Five interconnected buildings leverage federated deep learning for energy optimization and blockchain-enabled P2P trading, while maintaining grid connectivity for resilience. 
+
+Page 6:
+Tech Stack:•AI/ML:Python, TensorFlow/Keras, Pandas, NumPy•Federated Learning:Central weight aggregation•Blockchain:Ethereum, Solidity, Remix, Web3.js•Backend:FastAPI, REST APIs, PostgreSQL,Typescript•Frontend:React.js, Chart.js/Recharts, Tailwind CSS,Vite,•Tools:GitHub, Docker, Postman, Figma
+
+Page 7:
+Business Model:Our business model is based on providing an AI-driven smart microgrid management platform for residential complexes, campuses, and local energy communities. We generate revenue through subscription fees for energy optimization services, small transaction fees on peer-to-peer energy trading, and optional performance-based savings sharing. By prioritizing local renewable usage and reducing dependence on the main grid, our system delivers measurable cost savings while enabling transparent energy trading and sustainability tracking, making it both economically viable and environmentally impactful.
+
+Page 8:
+Hardware RequirementsIf you require any electronic components, please prepare anExcel sheet with twocolumns(Item and Quantity) and submit it through the Google Form provided below.Please note that sophisticated or high-value components will not be entertained.All electronic components issued on the day of the eventmust be returnedto thePurchase Committee in proper working condition and without any damage. Teams willbe held fully responsible for any loss or damage to the components.https://forms.gle/E6WsCBWEC9Aft1vB6
+
+Page 9:
+Thank you!!Kindly rename the file in the below format: <Team_Code>.pptx
+
+--- Content of AI-Enabled Smart Grid Management System Hackathon Roadmap.pdf ---
+Page 1:
+AI-Enabled Smart Grid Management System
+Hackathon Roadmap
+1. Problem Statement
+Integrating  large  shares  of  renewable  energy  (e.g.  solar ,  wind)  makes  supply  highly  variable  and
+decentralized,  causing  frequent  demand–supply  imbalances.  This  intermittency  drives  grid  frequency/
+voltage  fluctuations  and  increases  reliance  on  expensive  backup  generation,  threatening  stability  and
+causing blackouts . For example, studies note that very high renewable penetration has  already
+triggered total grid blackouts. Poor load forecasting and control under these conditions leads to
+inefficient dispatch, higher operating costs, curtailment of clean energy, and heightened carbon emissions
+. Quantitatively, AI-driven forecasting can reduce hour-ahead load prediction errors by  25–40% ,
+indicating the large impact inaccurate forecasts have on grid operations. The core challenge is therefore
+stabilizing an increasingly dynamic power network: we must match fluctuating generation to demand in
+real time while ensuring reliability and security, minimizing costs and emissions.
+2. Proposed Solution Architecture
+The system spans IoT edge devices through AI analytics, blockchain trading, and user-facing dashboards. At
+the  edge, ubiquitous sensors (smart meters, phasor measurement units, weather stations, and inverter
+monitors) feed data to local microcontrollers. These IoT devices perform preliminary filtering and may run
+simple ML models. Real-time grid measurements (frequency, voltage, load) and renewable outputs enter an
+ML backend: advanced AI models (LSTM/CNN or transformer-based networks) forecast short- and mid-
+term  load  and  generation.  Federated  learning  techniques  are  used  so  that  models  can  be  trained
+collaboratively on distributed data without centralizing sensitive usage patterns. Parallel to forecasting,
+a Grid Stability Module uses graph neural networks (GNNs) to analyze the power network topology and
+predict  dynamic  stability;  this  flags  “troublemaker”  nodes  and  anticipates  faults.  Multi-agent
+reinforcement learning controllers (e.g. TD3-based agents) adjust local inverter and generator settings to
+regulate frequency and tie-line flows. 
+On the blockchain side, prosumer peers and microgrids trade surplus energy. A permissioned (consortium)
+blockchain network records peer-to-peer trades and carbon credits. Each microgrid is a blockchain node
+that submits encrypted buy/sell bids. Smart contracts implement a  sealed-bid double auction: bids are
+posted (encrypted) to the chain, later revealed and verified against the ledger , and winners are cleared
+automatically. All energy transactions (power flows and payments) are immutably logged on-chain.
+The blockchain also supports smart-contract-based carbon credit trading and virtual power plant (VPP)
+schemes . 
+A backend API layer (e.g. FastAPI or Node.js/Express) orchestrates system logic: it collects forecast data,
+triggers smart-contract calls, stores results in a database (PostgreSQL/MongoDB), and interfaces with the
+forecasting  and  control  engines.  The  frontend (React  or  similar)  provides  real-time  dashboards  and
+controls: it displays current grid status, forecasts, and trade markets (with charts from libraries like D3 or
+1 2
+3
+2 4
+5
+6
+1
+7 8
+9
+1
+
+Page 2:
+Chart.js), and allows users to initiate trades and view wallet interactions via Web3.js. Overall, data flows
+from  edge  sensors  into  AI  models  and  the  database;  predictions  and  control  signals  feed  into  the
+blockchain  trading  platform  and  control  modules;  and  the  UI  visualizes  grid  metrics  and  trading
+information in real time. 
+3. Novelty & USP
+Key novel elements drawn from the research include:
+Hybrid AI/Physics Forecasting: We combine deep learning (LSTM/CNN/Transformer) with physical
+grid models. As shown in recent work, LSTM networks capture temporal dependencies far better
+than traditional methods (reducing forecast error 25–40%), and hybrid models ensure
+interpretability by embedding physical constraints. This yields highly accurate, explainable
+demand and renewable output forecasts. 
+Decentralized Learning: To respect data privacy and heterogeneity, we use federated learning so
+that each microgrid can train local AI models on-site and share only model updates. This follows
+recommendations for scalable, resilient smart grids. 
+GNN-based Stability Assessment: We employ Graph Neural Networks on the grid’s topology to
+predict dynamic stability, a cutting-edge approach shown to identify vulnerable “troublemaker”
+nodes in large grids. This allows preemptive actions on at-risk areas. 
+Multi-Agent RL Control: Our system features multi-agent deep RL (specifically, an improved TD3
+algorithm) to tune local controllers (e.g. inverter droop or battery dispatch) for automatic frequency
+and tie-line control. This novel approach outperforms classic PID tuning methods under
+renewable variability. 
+Blockchain Sealed-Bid Trading: We adopt a fully distributed sealed-bid auction mechanism on a
+consortium blockchain, as proposed in [14]. Bids are one-way encrypted and verified on-chain,
+ensuring privacy and fairness. The decentralized smart contracts then match and settle trades
+automatically . 
+Smart Contracts for Carbon Trading: Beyond energy, the blockchain can tokenize carbon credits
+and green certificates. Drawing on blockchain literature, we integrate smart contracts for carbon
+credit sales/purchases and VPP energy trading. 
+IoT-Enabled Smart Inverters: The system leverages next-gen smart inverters with embedded IoT
+and AI. These inverters can self-adjust and report diagnostics, enhancing resilience. (For example,
+embedding IoT in inverters enables secure, AI-monitored control.) 
+End-to-End Real-Time Visualization: A modern UI (e.g. with Grafana and React dashboards)
+provides operators and end-users visibility into forecasts, stability metrics, and trade markets in real
+time. 
+By merging these state-of-the-art methods, the system’s USP is a  holistic integration of AI forecasting,
+blockchain trading, and intelligent control — a combination not found in any single prior work.
+• 
+4
+10
+• 
+5
+• 
+6
+• 
+1
+• 
+7 8
+• 
+9
+• 
+11
+• 
+2
+
+Page 3:
+4. Technical Flowchart Description
+The data flow proceeds in steps:
+Data Acquisition: Grid sensors and IoT meters continuously collect data on load, frequency, voltage,
+solar/wind output, and meteorological conditions. This data is streamed (e.g. via MQTT/Kafka) into
+the processing pipeline. 
+Preprocessing and Edge Processing: Edge devices perform initial filtering and may run lightweight
+analytics (e.g. anomaly detection). Filtered data is sent to the central server . Historical data is also
+retrieved from databases. 
+Machine Learning – Forecasting: The AI/ML Engineer preprocesses the time-series data and trains
+hybrid models (LSTM/CNN and physics-AI) for load and renewable output forecasting. These models
+(implemented in TensorFlow/Keras or PyTorch) output short-term (hourly) and mid-term (day-ahead)
+forecasts . 
+Machine Learning – Stability Analysis: The grid’s connectivity graph (buses and lines) is fed into a
+Graph Neural Network (using PyTorch Geometric) that predicts dynamic stability indices.
+Vulnerable nodes are flagged. 
+Demand Response Signal: Based on forecasts and stability alerts, the system computes optimal
+dispatch schedules. It may send signals to smart thermostats or demand-response devices to
+smooth demand peaks in real time. 
+P2P Trading Bidding: The system determines each prosumer’s surplus or deficit. Each participant
+forms buy/sell bids for the upcoming period. Bids are encrypted and submitted to the blockchain.
+For example, as in [14], each bid is hashed and recorded on-chain during the bidding window. 
+Blockchain Auction Settlement: Once bidding closes, participants reveal their bid contents. Smart
+contracts verify the bids against the on-chain hashes. The double-auction contract then clears
+the market: matching buyers and sellers, setting clearing prices, and initiating transfer orders.
+Carbon credit trades (if any) are similarly executed. 
+Grid Control Actuation: Concurrently, each area’s RL controller (TD3 agent) receives the current
+area control error (frequency deviation, tie-line flow error) and outputs control signals (e.g. inverter
+setpoints or battery dispatch). These actions stabilize frequency in real time. 
+Transaction Logging and Settlement: Power flows are enacted physically (via grid dispatch) and
+concurrently recorded on the blockchain ledger. Blockchain Developer 2 ensures each confirmed
+trade and control action (energy delivered, payments) is logged in the distributed ledger and in a
+backend database for analytics. 
+Visualization: The frontend polls the backend API for live data. The UI dashboard displays: current
+vs. forecast demand/generation curves, frequency plots, stability warnings, and a live order book/
+trade history of the blockchain market. Operators can drill into charts (e.g. Grafana or D3.js) and
+initiate manual override if needed.
+Each  step  leverages  techniques  from  the  literature:  e.g.  deep  LSTM/CNN  models  for  forecasting,
+encrypted bid submission on blockchain, multi-agent RL for frequency control, and GNN-based
+stability prediction. The end-to-end data flow closes the loop from sensors to AI to blockchain and back
+to actuators and operators.
+1. 
+2. 
+3. 
+4
+4. 
+12
+5. 
+6. 
+7
+7. 
+7
+8. 
+13
+9. 
+8
+10. 
+4
+7 13
+6
+3
+
+Page 4:
+5. Tech Stack & Tools
+Data & ML Frameworks: Python (NumPy, Pandas, Scikit-learn) for data handling. TensorFlow/Keras
+or PyTorch for deep learning models. PyTorch Geometric library for Graph Neural Networks. 
+Forecasting & Analysis: Libraries like TensorFlow or Keras for LSTM/CNN; PyTorch for transformer
+and GNN models; Jupyter notebooks for development. 
+Reinforcement Learning: Python-based RL frameworks (e.g. Stable Baselines or custom PyTorch) to
+implement TD3 networks. 
+Blockchain Platform: Ethereum-compatible environment. Smart contracts written in Solidity.
+Development with Truffle or Hardhat (with Ganache for local testing). For a permissioned
+consortium, Hyperledger Fabric could also be used. The blockchain nodes (Ganache or Fabric peer)
+are set up by Blockchain Dev 2. 
+Smart Contract Tools: Truffle or Hardhat suite, Metamask/Ethers.js or Web3.js for contract
+interaction on frontend. Use Remix IDE for prototyping if needed. 
+Backend & API: FastAPI (Python) or Node.js/Express for RESTful APIs. Database: PostgreSQL or
+MongoDB to store forecasts, bids, and ledger references. Server environment containerized with
+Docker . 
+Messaging & IoT: MQTT or Kafka for sensor data ingestion. Inverters and meters communicate via
+standard protocols. Data validation with JSON schemas or Protobuf. 
+Frontend & Visualization: React (or Vue.js) for UI. Real-time charting with libraries (e.g. D3.js,
+Recharts). Grafana could be added for grid metrics dashboard. Use Ethers.js/Web3.js to connect
+frontend to the blockchain. 
+Other Tools: Git for version control. CI/CD pipelines (GitHub Actions). Python’s pytest or Mocha/Chai
+for testing. Linux servers or AWS/GCP for deployment. 
+Cybersecurity: TLS for all communications, and secure key management for blockchain wallets. 
+Each tool is chosen to match referenced methodologies: e.g., PyTorch for GNNs, Solidity/EVM for smart
+contracts , and Python ML libraries for LSTM/CNN as in the cited studies.
+6. Detailed Member-by-Member Workflow
+AI/ML Engineer (Forecasting & Stability):
+- 0–8h: Collect and preprocess datasets (historical load, weather , solar/wind output). Set up data pipelines
+(ETL). Begin baseline model (e.g. ARIMA or simple LSTM) to ensure pipeline works.
+- 8–16h: Develop and train advanced forecasting models. Implement an LSTM network for short-term load
+forecasting and a CNN or transformer for spatial weather forecasting. Train hybrid AI/physics models by
+incorporating known grid parameters. Evaluate on a validation set, measure RMSE/MAE.
+- 16–24h: Refine models. Incorporate multi-variate inputs (grid state, weather). If time permits, implement
+federated learning prototype using local simulated data (split data across two “sites” and aggregate model
+weights). Document model architectures.
+- 24–32h: Train Graph Neural Network on synthetic grid stability data to identify weak nodes. Test GNN
+on a test grid graph to predict dynamic instability.
+- 32–40h: Expose model inference via API endpoints (e.g. FastAPI). Ensure forecasts can be queried in real
+time. Prepare scripts to feed forecasts into the trading/optimization pipeline.
+- 40–48h: Final tuning and documentation. Monitor model performance. Assist RL controller integration by
+providing forecasts and stability alerts. Prepare a short report on model accuracy (cite [28] results). 
+• 
+14 12
+• 
+• 
+13
+• 
+15
+• 
+• 
+• 
+• 
+• 
+• 
+12
+15 4 12
+4
+6
+4
+
+Page 5:
+Blockchain Dev 1 (Smart Contracts & P2P Auction):
+- 0–8h: Architect the blockchain network (choose Ethereum consortium or Fabric). Spin up local blockchain
+nodes (e.g. Ganache CLI or Fabric peers). Initialize smart contract project (Truffle/Hardhat).
+- 8–16h: Code the sealed-bid auction contract: functions for bid submission (hashBid), bid reveal, winner
+selection, and settlement. Implement one-way encryption (hashing) of bids as per [14]. Write Solidity for
+carbon credit token contracts if time.
+- 16–24h: Write unit tests for smart contracts (using JavaScript/Python test suite). Deploy contracts to a local
+testnet. Simulate bidding with dummy accounts to verify correct clearing and fund/energy accounting.
+- 24–32h: Add auxiliary contracts (user registry, token for internal credits). Integrate events so that Backend
+Dev can catch “TradeExecuted” and “BidSubmitted” events from the chain.
+-  32–40h: Security review of contracts. Ensure no reentrancy or overflow. Deploy contracts to a shared
+development network. Work with Backend Dev to connect Web3 calls to these contracts.
+- 40–48h: Final integration. Demonstrate an end-to-end bid: submit bid from Frontend (via contract), reveal
+and settle. Fix any bugs. Document smart contract logic and ABIs.
+Blockchain Dev 2 (Blockchain Network & Validation):
+- 0–8h: Set up the blockchain infrastructure. If using Ethereum, run multiple local nodes (geth or Ganache)
+to emulate a consortium. If Fabric, define the network (orderer , peers) via Docker Compose.
+-  8–16h: Implement or configure the consensus mechanism (e.g. Proof-of-Authority with fixed validators)
+. Ensure nodes can join and communicate.
+- 16–24h: Develop logic for bid validation: a script or contract module that cross-checks revealed bids with
+hashed bids on-chain, as per [14].
+-  24–32h: Connect blockchain data to the backend: write event listeners to capture transactions (trades,
+payments) and store logs in a database. Ensure immutability by cross-verifying on-chain data.
+-  32–40h: Test  node  resilience:  kill  one  node  and  ensure  network  continuity.  Measure  transaction
+throughput. Optimize RPC endpoints for API access.
+- 40–48h: Final tasks: set up a block explorer (or minimal logging UI) to visualize chain state. Assist with final
+troubleshooting of smart contract integration. 
+Backend Developer (API & Integration):
+- 0–8h: Scaffold the backend server (e.g. FastAPI). Define data models (User , Bid, Trade, Forecast). Set up the
+database schema (PostgreSQL).
+-  8–16h: Implement REST endpoints: e.g.  /forecast (calls AI model),  /submit-bid (calls blockchain
+contract), /trades (reads database). Integrate Web3 provider (Infura or local node) to interact with smart
+contracts.
+-  16–24h: Develop services to process blockchain events: on a new block, parse completed trades and
+update order book in DB. Implement user authentication (JWT) if needed for dashboard.
+-  24–32h: Integrate  real-time  data  ingest:  consume  sensor  data  (MQTT/Kafka)  and  store  in  DB.  Add
+endpoints for UI to fetch live data (e.g. /grid-status, /market-orders).
+-  32–40h: Ensure fault tolerance: add error handling, retries for blockchain RPC calls. Cache expensive
+operations (e.g. recent forecasts). Write API documentation (Swagger).
+- 40–48h: Final testing: run end-to-end test (simulate user creating a bid via API and checking blockchain).
+Optimize performance (profiling queries). Coordinate with Frontend Dev on payloads. 
+Frontend Developer (UI & Dashboards):
+-  0–8h: Initialize the frontend project (React). Create the basic layout: navigation bar , dashboard panels.
+Implement authentication (if needed).
+7
+16
+7
+5
+
+Page 6:
+- 8–16h: Develop real-time charts for power usage and forecasts. Use a charting library (e.g. Recharts or D3).
+Integrate maps or SVG of grid topology showing status (using real-time data from backend).
+-  16–24h: Build the  Energy Trading Interface: a panel showing current price/ticker and an order book.
+Provide forms for users to submit buy/sell bids (triggering smart contract via Web3.js). Display user wallet
+balance (simulated).
+- 24–32h: Connect to backend APIs: fetch forecasts, grid metrics, and historical trade data to populate UI.
+Listen for WebSocket or polling updates to refresh charts and trade logs live.
+-  32–40h: Integrate blockchain interaction: configure MetaMask/Ethers.js so the UI can call the auction
+smart contract (e.g. for bid submission and reveal). Show confirmations of transactions.
+-  40–48h: Polish  UI:  ensure  responsiveness,  error  messages,  and  final  styling.  Fix  any  UX  issues  (e.g.
+handling transaction delays). Prepare demo-ready screens and user guide.
+Each role’s tasks borrow from the literature: e.g., the AI engineer’s LSTM implementation is validated by
+[28†L141-L144], while both blockchain devs use the sealed-bid protocol in [14†L35-L44]. The RL and GNN
+development reflect the methods in [7†L25-L33] and [9†L21-L29] respectively. The backend and frontend
+roles ensure these models and contracts are wired together into a cohesive system.
+7. Business Model & Viability
+The system’s value proposition includes multiple revenue streams and sustainability benefits. Transaction
+fees  on  the  P2P  energy  market  (e.g.  a  small  percentage  of  each  trade)  provide  a  direct  revenue.  The
+platform  can  sell  virtual  power  plant services,  aggregating  distributed  resources  and  taking  a  share  of
+profits. Importantly,  carbon credit trading is integrated: smart contracts tokenize carbon certificates, so
+renewable generators earn credits and buyers pay for offsets. This opens new revenue — for instance, three
+dedicated smart contracts can handle carbon credit issuance, sale, and retirement. Such automation of
+carbon trading is innovative and taps into growing decarbonization markets. 
+Cost savings also boost viability. By improving forecast accuracy, the system reduces fossil backup usage
+and reserve requirements, translating to lower fuel costs and emissions. These efficiency gains can
+justify subscription or licensing fees from utilities. Additionally, the platform could charge for premium
+analytics or data: real-time grid health metrics and demand forecasts are valuable to grid operators. Over
+time, network effects and data accumulation enhance machine learning accuracy, making the service more
+attractive. 
+Finally, by aligning with green energy incentives (electricity markets, carbon pricing) and using cost-efficient
+blockchain consensus (e.g. PoS/Etherium 2.0), the solution remains economically sustainable. Its multi-
+modal monetization (trade fees, carbon markets, analytics services) ensures viability even as renewable
+penetration grows. 
+Sources: We drew on recent studies of AI and blockchain in energy systems to inform each
+component’s design, ensuring the roadmap leverages state-of-the-art techniques. 
+R4.pdf
+file://file_00000000010871fa9b214eef6471c004
+9
+17
+18
+4 7 9 17
+1 3 13
+6
+
+Page 7:
+R3.pdf
+file://file_000000008a4871faa7e42e0bbcc1cc9a
+R5.pdf
+file://file_00000000a96c71fab3b652b6fbe5bfe3
+1-s2.0-S0142061524001844-main.pdf
+file://file_00000000e9f471fa8fd4736d2db200ce
+1-s2.0-S2211467X23001578-main.pdf
+file://file_0000000057a071fabc1c910ba21f2f83
+1-s2.0-S2405844024156277-main.pdf
+file://file_0000000056f471fa89a684533ac634cd
+R1.pdf
+file://file_000000003a1471fa962e0da0af9be577
+1-s2.0-S2772671124003310-main.pdf
+file://file_000000005b7071fa946dc7b83df1d373
+2 4 5 10 17
+6 12
+7 8
+9
+11
+14
+15 16 18
+7
+

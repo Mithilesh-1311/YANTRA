@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+:root {
+  /* ── Control Room Palette ── */
+  --color-bg: #0c0e14;
+  --color-surface: #151820;
+  --color-card: #1a1d27;
+  --color-border: #2a2d38;
+  --color-border-subtle: #22252f;
+
+  /* Single functional accent */
+  --color-accent: #00d4ff;
+  --color-accent-dim: rgba(0, 212, 255, 0.15);
+
+  /* Semantic */
+  --color-positive: #34d399;
+  --color-negative: #f87171;
+  --color-warning: #fbbf24;
+  --color-info: #60a5fa;
+
+  /* Text */
+  --color-text: #e2e4ea;
+  --color-text-muted: #7a7f8e;
+  --color-text-dim: #4a4f5e;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+  /* Keep old variable names for backward compat during migration */
+  --color-primary: var(--color-bg);
+  --color-secondary: var(--color-surface);
+  --color-accent-cyan: var(--color-accent);
+  --color-accent-green: var(--color-positive);
+  --color-text-main: var(--color-text);
+}
+
+@theme {
+  --color-background: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-neon-blue: var(--color-accent);
+  --color-neon-green: var(--color-positive);
+
+  --font-display: var(--font-sans);
+}
+
+/* ── Base ── */
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Utility Classes ── */
+.font-mono {
+  font-family: var(--font-mono) !important;
+}
+
+.card {
+  background: var(--color-card);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.card-surface {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+.status-dot-positive {
+  background: var(--color-positive);
+}
+
+.status-dot-negative {
+  background: var(--color-negative);
+}
+
+.status-dot-warning {
+  background: var(--color-warning);
+}
+
+.status-dot-info {
+  background: var(--color-accent);
+}
+
+/* Pulse for live indicators */
+.status-dot-live {
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+
+@keyframes pulse-dot {
+
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Badge system */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  font-family: var(--font-mono);
+}
+
+.badge-positive {
+  background: rgba(52, 211, 153, 0.12);
+  color: var(--color-positive);
+}
+
+.badge-negative {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--color-negative);
+}
+
+.badge-warning {
+  background: rgba(251, 191, 36, 0.12);
+  color: var(--color-warning);
+}
+
+.badge-accent {
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
+}
+
+/* Table base */
+.data-table {
+  width: 100%;
+  text-align: left;
+  border-collapse: collapse;
+}
+
+.data-table thead th {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--color-border);
+  font-family: var(--font-sans);
+}
+
+.data-table tbody td {
+  padding: 12px 18px;
+  font-size: 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.data-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Page entrance animation */
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-enter {
+  animation: fade-in-up 0.3s ease-out both;
+}
+
+/* Keep old class for backward compat */
+.animate-fade-in {
+  animation: fade-in-up 0.3s ease-out both;
+}
+
+/* Input styling */
+.input-field {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  color: var(--color-text);
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.input-field:focus {
+  border-color: var(--color-accent);
+}
+
+.input-field::placeholder {
+  color: var(--color-text-dim);
+}
+
+.input-field-mono {
+  font-family: var(--font-mono);
+}
