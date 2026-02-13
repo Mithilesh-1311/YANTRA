@@ -1,10 +1,25 @@
 import React, { useState } from 'react';
-import { userProfile } from '../services/mockData';
-import { User, Edit2, Save } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Edit2, Save, Shield, Zap, Award } from 'lucide-react';
 
 const Profile: React.FC = () => {
+    const { user } = useAuth();
     const [isEditing, setIsEditing] = useState(false);
-    const [profile, setProfile] = useState(userProfile);
+
+    const displayName = user?.user_metadata?.full_name || 'Operator';
+    const displayEmail = user?.email || 'unknown@grid.io';
+    const joinDate = user?.created_at
+        ? new Date(user.created_at).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+        : 'N/A';
+    const energyId = `SG-${user?.id?.substring(0, 4).toUpperCase() || 'XXXX'}-${user?.id?.substring(4, 8).toUpperCase() || 'XXXX'}`;
+
+    const [profile, setProfile] = useState({
+        name: displayName,
+        email: displayEmail,
+        phone: '+1 (555) 123-4567',
+        location: 'San Francisco, CA',
+        accountType: 'Prosumer',
+    });
 
     const handleSave = () => {
         setIsEditing(false);
@@ -17,8 +32,8 @@ const Profile: React.FC = () => {
                 <button
                     onClick={() => isEditing ? handleSave() : setIsEditing(true)}
                     className={`flex items-center gap-2 px-5 py-2.5 text-[13px] font-bold rounded-md transition-all ${isEditing
-                            ? 'bg-[var(--color-positive)] text-black hover:brightness-110'
-                            : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-accent)]'
+                        ? 'bg-[var(--color-positive)] text-black hover:brightness-110'
+                        : 'bg-[var(--color-card)] border border-[var(--color-border)] text-[var(--color-text)] hover:border-[var(--color-accent)]'
                         }`}
                     style={{ fontFamily: 'var(--font-mono)' }}
                 >
@@ -29,8 +44,8 @@ const Profile: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Profile Card */}
                 <div className="card p-7 text-center">
-                    <div className="w-24 h-24 rounded-md bg-[var(--color-bg)] border border-[var(--color-border)] mx-auto mb-5 flex items-center justify-center">
-                        <User size={32} className="text-[var(--color-accent)]" />
+                    <div className="w-24 h-24 rounded-md bg-[var(--color-bg)] border border-[var(--color-border)] mx-auto mb-5 flex items-center justify-center text-3xl font-bold text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-mono)' }}>
+                        {displayName.charAt(0).toUpperCase()}
                     </div>
                     <h2 className="text-xl font-semibold text-white mb-0.5">{profile.name}</h2>
                     <p className="text-[13px] text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-mono)' }}>{profile.accountType.toUpperCase()}</p>
@@ -38,11 +53,15 @@ const Profile: React.FC = () => {
                     <div className="text-left space-y-3 text-sm border-t border-[var(--color-border)] mt-6 pt-6">
                         <div className="flex justify-between">
                             <span className="text-[var(--color-text-muted)]">Member Since</span>
-                            <span className="text-white">{profile.joinDate}</span>
+                            <span className="text-white">{joinDate}</span>
                         </div>
                         <div className="flex justify-between">
                             <span className="text-[var(--color-text-muted)]">Energy ID</span>
-                            <span className="text-white" style={{ fontFamily: 'var(--font-mono)' }}>{profile['energy ID']}</span>
+                            <span className="text-white" style={{ fontFamily: 'var(--font-mono)' }}>{energyId}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-[var(--color-text-muted)]">Status</span>
+                            <span className="badge badge-positive">Active</span>
                         </div>
                     </div>
                 </div>
@@ -76,11 +95,11 @@ const Profile: React.FC = () => {
                             <label className="block text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Email</label>
                             <input
                                 type="email"
-                                disabled={!isEditing}
+                                disabled
                                 value={profile.email}
-                                onChange={(e) => setProfile({ ...profile, email: e.target.value })}
-                                className={`input-field ${isEditing ? 'border-[var(--color-accent)]' : ''} ${!isEditing ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                className="input-field opacity-70 cursor-not-allowed"
                             />
+                            <p className="text-[10px] text-[var(--color-text-dim)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>Email is managed by Supabase Auth</p>
                         </div>
 
                         <div>
@@ -100,6 +119,37 @@ const Profile: React.FC = () => {
                                 <p className="text-[13px] text-[var(--color-text-muted)]">Changes will be verified on the blockchain before updating.</p>
                             </div>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                <div className="card p-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-md bg-[rgba(52,211,153,0.1)] flex items-center justify-center">
+                        <Zap size={18} className="text-[var(--color-positive)]" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Energy Traded</p>
+                        <p className="text-lg font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>1,247 <span className="text-xs font-normal text-[var(--color-text-dim)]">kWh</span></p>
+                    </div>
+                </div>
+                <div className="card p-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-md bg-[rgba(96,165,250,0.1)] flex items-center justify-center">
+                        <Shield size={18} className="text-[var(--color-accent)]" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Trust Score</p>
+                        <p className="text-lg font-bold text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-mono)' }}>98.5%</p>
+                    </div>
+                </div>
+                <div className="card p-5 flex items-center gap-4">
+                    <div className="w-10 h-10 rounded-md bg-[rgba(245,158,11,0.1)] flex items-center justify-center">
+                        <Award size={18} className="text-[var(--color-warning)]" />
+                    </div>
+                    <div>
+                        <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Carbon Credits</p>
+                        <p className="text-lg font-bold text-[var(--color-warning)]" style={{ fontFamily: 'var(--font-mono)' }}>450 <span className="text-xs font-normal text-[var(--color-text-dim)]">CC</span></p>
                     </div>
                 </div>
             </div>

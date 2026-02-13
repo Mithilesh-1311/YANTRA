@@ -1,7 +1,13 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
-import { forecastData } from '../services/mockData';
-import { BrainCircuit, TrendingUp, CloudSun, Battery } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell } from 'recharts';
+import { forecastData, buildingStats } from '../services/mockData';
+import { BrainCircuit, TrendingUp, CloudSun, Battery, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+
+const surplusDeficitData = buildingStats.map(b => ({
+    name: b.name.split(' ')[0] + ' ' + (b.name.split(' ')[1] || ''),
+    value: b.solar - b.load,
+    building: b.name,
+}));
 
 const Forecasts: React.FC = () => {
     const netPosition = forecastData[0].value2! - forecastData[0].value;
@@ -53,6 +59,46 @@ const Forecasts: React.FC = () => {
                                 <Line type="monotone" dataKey="value" stroke="var(--color-text-muted)" strokeWidth={1.5} name="Actual Load" dot={false} />
                                 <Line type="monotone" dataKey="value2" stroke="var(--color-accent)" strokeWidth={2} name="AI Prediction" dot={false} strokeDasharray="6 3" />
                             </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+            </div>
+
+            {/* Surplus / Deficit Bar Chart */}
+            <div className="card overflow-hidden">
+                <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
+                    <div>
+                        <h3 className="text-base font-semibold text-white">Building-wise Surplus / Deficit</h3>
+                        <p className="text-xs text-[var(--color-text-muted)]">Solar generation minus load consumption per building</p>
+                    </div>
+                    <div className="flex items-center gap-5 text-xs">
+                        <span className="flex items-center gap-1.5 text-[var(--color-positive)]">
+                            <ArrowUpRight size={13} /> Surplus
+                        </span>
+                        <span className="flex items-center gap-1.5 text-[var(--color-negative)]">
+                            <ArrowDownRight size={13} /> Deficit
+                        </span>
+                    </div>
+                </div>
+                <div className="p-6">
+                    <div className="h-64">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={surplusDeficitData} layout="vertical" barSize={24}>
+                                <CartesianGrid stroke="var(--color-border-subtle)" horizontal={false} />
+                                <XAxis type="number" stroke="var(--color-text-dim)" tick={{ fontSize: 12, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} unit=" kW" />
+                                <YAxis dataKey="name" type="category" width={90} stroke="var(--color-text-dim)" tick={{ fontSize: 11, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px', fontFamily: 'var(--font-mono)' }}
+                                    formatter={(val: number) => [`${val > 0 ? '+' : ''}${val} kW`, val > 0 ? 'Surplus' : 'Deficit']}
+                                    labelFormatter={(label: string) => `Building: ${label}`}
+                                />
+                                <ReferenceLine x={0} stroke="var(--color-text-dim)" strokeWidth={1} />
+                                <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                                    {surplusDeficitData.map((entry, i) => (
+                                        <Cell key={i} fill={entry.value >= 0 ? 'var(--color-positive)' : 'var(--color-negative)'} fillOpacity={0.8} />
+                                    ))}
+                                </Bar>
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                 </div>

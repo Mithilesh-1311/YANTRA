@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { buildingStats, marketPrices } from '../services/mockData';
-import { AreaChart, Area, ResponsiveContainer } from 'recharts';
-import { Activity, Zap, Radio, DollarSign } from 'lucide-react';
+import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
+import { Activity, Zap, Radio, DollarSign, Sun, Building2, BatteryCharging } from 'lucide-react';
+
+const COLORS = ['#34d399', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa'];
 
 const DashboardOverview: React.FC = () => {
     const [demand, setDemand] = useState(4285);
@@ -18,6 +20,27 @@ const DashboardOverview: React.FC = () => {
     }, []);
 
     const sparkData = Array.from({ length: 20 }, (_, i) => ({ val: 40 + Math.sin(i / 2) * 10 + Math.random() * 8 }));
+
+    // Data for pie charts
+    const solarPieData = buildingStats.map(b => ({ name: b.name, value: b.solar }));
+    const loadPieData = buildingStats.map(b => ({ name: b.name, value: b.load }));
+
+    const totalSolar = buildingStats.reduce((s, b) => s + b.solar, 0);
+    const totalLoad = buildingStats.reduce((s, b) => s + b.load, 0);
+    const avgBattery = Math.round(buildingStats.reduce((s, b) => s + b.battery, 0) / buildingStats.length);
+
+    const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+        const RADIAN = Math.PI / 180;
+        const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+        const x = cx + radius * Math.cos(-midAngle * RADIAN);
+        const y = cy + radius * Math.sin(-midAngle * RADIAN);
+        if (percent < 0.08) return null;
+        return (
+            <text x={x} y={y} fill="var(--color-text)" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold" fontFamily="var(--font-mono)">
+                {`${(percent * 100).toFixed(0)}%`}
+            </text>
+        );
+    };
 
     return (
         <div className="space-y-6 animate-enter">
@@ -105,6 +128,98 @@ const DashboardOverview: React.FC = () => {
                         <span className="text-[var(--color-negative)]">
                             +{((marketPrices.gridBuy - marketPrices.p2pAverage) / marketPrices.p2pAverage * 100).toFixed(0)}%
                         </span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Energy Breakdown Pie Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* Solar Generation Breakdown */}
+                <div className="card overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
+                        <Sun size={15} className="text-[var(--color-warning)]" />
+                        <h3 className="text-base font-semibold text-white">Solar Generation</h3>
+                    </div>
+                    <div className="p-4 flex flex-col items-center">
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={solarPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" labelLine={false} label={renderCustomLabel} stroke="none">
+                                        {solarPieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }} formatter={(val) => [`${val} kW`, 'Solar']} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <p className="text-center text-sm mt-1">
+                            <span className="font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>{totalSolar} kW</span>
+                            <span className="text-[var(--color-text-muted)] ml-1.5 text-xs">total generation</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2 justify-center mt-3">
+                            {solarPieData.map((d, i) => (
+                                <span key={d.name} className="flex items-center gap-1.5 text-[10px] text-[var(--color-text-muted)]">
+                                    <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[i] }} />
+                                    {d.name.split(' ')[0]}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Load Consumption Breakdown */}
+                <div className="card overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
+                        <Building2 size={15} className="text-[var(--color-negative)]" />
+                        <h3 className="text-base font-semibold text-white">Load Consumption</h3>
+                    </div>
+                    <div className="p-4 flex flex-col items-center">
+                        <div className="h-48 w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <PieChart>
+                                    <Pie data={loadPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" labelLine={false} label={renderCustomLabel} stroke="none">
+                                        {loadPieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                    </Pie>
+                                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }} formatter={(val) => [`${val} kW`, 'Load']} />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </div>
+                        <p className="text-center text-sm mt-1">
+                            <span className="font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>{totalLoad} kW</span>
+                            <span className="text-[var(--color-text-muted)] ml-1.5 text-xs">total consumption</span>
+                        </p>
+                        <div className="flex flex-wrap gap-2 justify-center mt-3">
+                            {loadPieData.map((d, i) => (
+                                <span key={d.name} className="flex items-center gap-1.5 text-[10px] text-[var(--color-text-muted)]">
+                                    <span className="w-2 h-2 rounded-sm" style={{ backgroundColor: COLORS[i] }} />
+                                    {d.name.split(' ')[0]}
+                                </span>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+
+                {/* Battery Status Overview */}
+                <div className="card overflow-hidden">
+                    <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
+                        <BatteryCharging size={15} className="text-[var(--color-positive)]" />
+                        <h3 className="text-base font-semibold text-white">Battery Status</h3>
+                    </div>
+                    <div className="p-5 space-y-3">
+                        {buildingStats.map((b, i) => (
+                            <div key={b.id}>
+                                <div className="flex justify-between text-xs mb-1">
+                                    <span className="text-[var(--color-text-muted)]">{b.name}</span>
+                                    <span className="font-bold" style={{ fontFamily: 'var(--font-mono)', color: COLORS[i] }}>{b.battery}%</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-[var(--color-border)] rounded-sm overflow-hidden">
+                                    <div className="h-full rounded-sm transition-all duration-700" style={{ width: `${b.battery}%`, backgroundColor: COLORS[i] }} />
+                                </div>
+                            </div>
+                        ))}
+                        <div className="mt-4 p-3 bg-[var(--color-bg)] border border-[var(--color-border)] rounded-md text-center">
+                            <p className="text-[10px] text-[var(--color-text-muted)] uppercase tracking-wider">Avg Battery</p>
+                            <p className="text-2xl font-bold text-white mt-0.5" style={{ fontFamily: 'var(--font-mono)' }}>{avgBattery}%</p>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -36,11 +36,6 @@ export const tradingHistory = [
     { id: 5, type: 'Buy', amount: 75, price: 0.12, status: 'Confirmed', time: '11:05 AM' },
 ];
 
-export const walletTransactions = [
-    { id: '0x123...abc', type: 'Deposit', amount: '500 SG', status: 'Confirmed', date: '2023-10-25' },
-    { id: '0x456...def', type: 'Trade', amount: '-120 SG', status: 'Confirmed', date: '2023-10-26' },
-    { id: '0x789...ghi', type: 'Carbon Credit', amount: '+50 CC', status: 'Pending', date: '2023-10-27' },
-];
 
 export const userProfile = {
     name: 'John Doe',
@@ -56,7 +51,7 @@ export const systemLogs = [
     { id: 1, action: 'Login Successful', ip: '192.168.1.10', time: 'Today, 10:00 AM' },
     { id: 2, action: 'Smart Meter Sync', ip: 'Device-AF22', time: 'Today, 09:45 AM' },
     { id: 3, action: 'Trade Executed (Buy)', ip: '192.168.1.10', time: 'Yesterday, 04:30 PM' },
-    { id: 4, action: 'Wallet Connected', ip: '192.168.1.10', time: 'Yesterday, 04:25 PM' },
+    { id: 4, action: 'Device Connected', ip: '192.168.1.10', time: 'Yesterday, 04:25 PM' },
     { id: 5, action: 'Password Changed', ip: '192.168.1.10', time: 'Oct 24, 2023' },
 ];
 

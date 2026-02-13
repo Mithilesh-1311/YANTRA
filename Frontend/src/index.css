@@ -35,6 +35,111 @@
   --color-text-main: var(--color-text);
 }
 
+/* ── Light Mode ── */
+[data-theme='light'] {
+  --color-bg: #f0f2f5;
+  --color-surface: #ffffff;
+  --color-card: #ffffff;
+  --color-border: #d8dce6;
+  --color-border-subtle: #e8ecf1;
+
+  --color-accent: #0080a0;
+  --color-accent-dim: rgba(0, 128, 160, 0.08);
+
+  --color-positive: #16a364;
+  --color-negative: #dc2626;
+  --color-warning: #ca8a04;
+  --color-info: #2563eb;
+
+  --color-text: #111827;
+  --color-text-muted: #4b5563;
+  --color-text-dim: #9ca3af;
+}
+
+/* Force white text to become dark in light mode */
+[data-theme='light'] .text-white {
+  color: var(--color-text) !important;
+}
+
+/* Cards get soft shadows in light mode */
+[data-theme='light'] .card {
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+/* Badges */
+[data-theme='light'] .badge-positive {
+  background: rgba(22, 163, 100, 0.1);
+}
+
+[data-theme='light'] .badge-negative {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+[data-theme='light'] .badge-warning {
+  background: rgba(217, 119, 6, 0.08);
+}
+
+[data-theme='light'] .badge-accent {
+  background: rgba(0, 128, 160, 0.08);
+}
+
+/* Table hovers */
+[data-theme='light'] .data-table tbody tr:hover {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+/* Scrollbar */
+[data-theme='light'] ::-webkit-scrollbar-track {
+  background: #eef0f3;
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: #c4c8d0;
+}
+
+/* SVG text in Recharts pie labels */
+[data-theme='light'] .recharts-pie-label-text,
+[data-theme='light'] .recharts-label,
+[data-theme='light'] .recharts-text {
+  fill: var(--color-text) !important;
+}
+
+/* Recharts tooltip override */
+[data-theme='light'] .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: #ffffff !important;
+  border-color: #d8dce6 !important;
+  color: #111827 !important;
+}
+
+/* Input fields */
+[data-theme='light'] .input-field {
+  background: #f7f8fa;
+  border-color: #d8dce6;
+}
+
+[data-theme='light'] .input-field:focus {
+  background: #ffffff;
+}
+
+/* Header surface */
+[data-theme='light'] header {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Profile dropdown */
+[data-theme='light'] .animate-enter {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* Fix hardcoded hover backgrounds (rgba white) */
+[data-theme='light'] [class*="hover:bg-[rgba(255,255,255"] {
+  --tw-bg-opacity: 1;
+}
+
+[data-theme='light'] .hover\:bg-\[rgba\(255\,255\,255\,0\.02\)\]:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
 @theme {
   --color-background: var(--color-bg);
   --color-surface: var(--color-surface);
