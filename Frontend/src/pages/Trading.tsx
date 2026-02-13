@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { buildingStats } from '../services/mockData';
-import { Battery, Activity, ArrowRight, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { Battery, Activity, ArrowRight, Clock, CheckCircle2, AlertCircle, Loader2, Check, X, Ban } from 'lucide-react';
 
 
 const activeTransactions = [
@@ -20,6 +20,8 @@ const StatusIcon: React.FC<{ status: string }> = ({ status }) => {
             return <Loader2 size={16} className="text-[var(--color-accent)] animate-spin" />;
         case 'Pending':
             return <AlertCircle size={16} className="text-[var(--color-warning)]" />;
+        case 'Denied':
+            return <Ban size={16} className="text-[var(--color-negative)]" />;
         default:
             return null;
     }
@@ -30,15 +32,29 @@ const statusColor = (status: string) => {
         case 'Completed': return 'text-[var(--color-positive)]';
         case 'In Progress': return 'text-[var(--color-accent)]';
         case 'Pending': return 'text-[var(--color-warning)]';
+        case 'Denied': return 'text-[var(--color-negative)]';
         default: return 'text-[var(--color-text-muted)]';
     }
 };
 
 const Trading: React.FC = () => {
+    const [transactions, setTransactions] = useState(activeTransactions);
     const buyers = buildingStats.filter(b => b.status === 'Deficit').length;
     const sellers = buildingStats.filter(b => b.status === 'Surplus').length;
     const centralBattery = 85;
     const gridStability = 76;
+
+    const handleAccept = (id: number) => {
+        setTransactions(prev =>
+            prev.map(tx => tx.id === id ? { ...tx, status: 'Completed' } : tx)
+        );
+    };
+
+    const handleDeny = (id: number) => {
+        setTransactions(prev =>
+            prev.map(tx => tx.id === id ? { ...tx, status: 'Denied' } : tx)
+        );
+    };
 
     const stabilityColor = gridStability >= 70
         ? 'var(--color-positive)'
@@ -137,7 +153,7 @@ const Trading: React.FC = () => {
                     <div>
                         <h3 className="text-base font-semibold text-white">Active Energy Transactions</h3>
                         <p className="text-xs text-[var(--color-text-muted)] mt-0.5" style={{ fontFamily: 'var(--font-mono)' }}>
-                            {activeTransactions.length} TRANSFERS
+                            {transactions.length} TRANSFERS
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
@@ -155,11 +171,12 @@ const Trading: React.FC = () => {
                                 <th>To</th>
                                 <th style={{ textAlign: 'center' }}>Energy (kWh)</th>
                                 <th>Status</th>
+                                <th style={{ textAlign: 'center' }}>Actions</th>
                                 <th style={{ textAlign: 'right' }}>Timestamp</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {activeTransactions.map((tx) => (
+                            {transactions.map((tx) => (
                                 <tr key={tx.id}>
 
                                     <td>
@@ -193,6 +210,55 @@ const Trading: React.FC = () => {
                                         </span>
                                     </td>
 
+                                    <td style={{ textAlign: 'center' }}>
+                                        {(tx.status === 'Pending' || tx.status === 'In Progress') ? (
+                                            <span className="inline-flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleAccept(tx.id)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 cursor-pointer"
+                                                    style={{
+                                                        background: 'rgba(52, 211, 153, 0.12)',
+                                                        color: 'var(--color-positive)',
+                                                        border: '1px solid rgba(52, 211, 153, 0.25)',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(52, 211, 153, 0.25)';
+                                                        e.currentTarget.style.boxShadow = '0 0 12px rgba(52, 211, 153, 0.3)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(52, 211, 153, 0.12)';
+                                                        e.currentTarget.style.boxShadow = 'none';
+                                                    }}
+                                                >
+                                                    <Check size={13} strokeWidth={3} />
+                                                    Accept
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeny(tx.id)}
+                                                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold rounded-full transition-all duration-200 cursor-pointer"
+                                                    style={{
+                                                        background: 'rgba(248, 113, 113, 0.12)',
+                                                        color: 'var(--color-negative)',
+                                                        border: '1px solid rgba(248, 113, 113, 0.25)',
+                                                    }}
+                                                    onMouseEnter={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(248, 113, 113, 0.25)';
+                                                        e.currentTarget.style.boxShadow = '0 0 12px rgba(248, 113, 113, 0.3)';
+                                                    }}
+                                                    onMouseLeave={(e) => {
+                                                        e.currentTarget.style.background = 'rgba(248, 113, 113, 0.12)';
+                                                        e.currentTarget.style.boxShadow = 'none';
+                                                    }}
+                                                >
+                                                    <X size={13} strokeWidth={3} />
+                                                    Deny
+                                                </button>
+                                            </span>
+                                        ) : (
+                                            <span className="text-xs text-[var(--color-text-dim)]" style={{ fontFamily: 'var(--font-mono)' }}>—</span>
+                                        )}
+                                    </td>
+
                                     <td style={{ textAlign: 'right' }}>
                                         <span className="text-[var(--color-text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
                                             {tx.time}
@@ -214,6 +280,9 @@ const Trading: React.FC = () => {
                     </span>
                     <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                         <AlertCircle size={13} className="text-[var(--color-warning)]" /> Pending
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
+                        <Ban size={13} className="text-[var(--color-negative)]" /> Denied
                     </span>
                 </div>
             </div>
