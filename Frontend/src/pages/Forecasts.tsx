@@ -89,8 +89,8 @@ const Forecasts: React.FC = () => {
                                 <YAxis dataKey="name" type="category" width={90} stroke="var(--color-text-dim)" tick={{ fontSize: 11, fontFamily: 'var(--font-mono)' }} tickLine={false} axisLine={false} />
                                 <Tooltip
                                     contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '13px', fontFamily: 'var(--font-mono)' }}
-                                    formatter={(val: number) => [`${val > 0 ? '+' : ''}${val} kW`, val > 0 ? 'Surplus' : 'Deficit']}
-                                    labelFormatter={(label: string) => `Building: ${label}`}
+                                    formatter={(val: any) => [`${val > 0 ? '+' : ''}${val} kW`, val > 0 ? 'Surplus' : 'Deficit']}
+                                    labelFormatter={(label: any) => `Building: ${label}`}
                                 />
                                 <ReferenceLine x={0} stroke="var(--color-text-dim)" strokeWidth={1} />
                                 <Bar dataKey="value" radius={[0, 4, 4, 0]}>
