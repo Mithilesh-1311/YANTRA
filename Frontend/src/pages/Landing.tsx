@@ -56,7 +56,8 @@ const Landing: React.FC = () => {
                     </div>
                 </motion.div>
 
-                {/* Feature cards */}
+
+
                 <motion.div
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}

@@ -1,4 +1,4 @@
-// Mock data for the Smart Grid Application
+
 
 export interface DataPoint {
     time: string;
@@ -8,24 +8,24 @@ export interface DataPoint {
 
 export const demandData: DataPoint[] = Array.from({ length: 24 }, (_, i) => ({
     time: `${i}:00`,
-    value: 4000 + Math.random() * 1000, // Demand
-    value2: 3800 + Math.random() * 1200, // Generation
+    value: 4000 + Math.random() * 1000,
+    value2: 3800 + Math.random() * 1200,
 }));
 
 export const frequencyData: DataPoint[] = Array.from({ length: 60 }, (_, i) => ({
     time: `${i}s`,
-    value: 49.8 + Math.random() * 0.4, // Hz
+    value: 49.8 + Math.random() * 0.4,
 }));
 
 export const voltageData: DataPoint[] = Array.from({ length: 24 }, (_, i) => ({
     time: `${i}:00`,
-    value: 220 + Math.random() * 10 - 5, // Voltage
+    value: 220 + Math.random() * 10 - 5,
 }));
 
 export const forecastData: DataPoint[] = Array.from({ length: 24 }, (_, i) => ({
     time: `${i}:00`,
-    value: 4200 + Math.sin(i / 3) * 500, // Actual
-    value2: 4200 + Math.sin(i / 3) * 500 + (Math.random() - 0.5) * 100, // Predicted
+    value: 4200 + Math.sin(i / 3) * 500,
+    value2: 4200 + Math.sin(i / 3) * 500 + (Math.random() - 0.5) * 100,
 }));
 
 export const tradingHistory = [

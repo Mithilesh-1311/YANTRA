@@ -62,7 +62,7 @@ const Auth: React.FC = () => {
                     </p>
                 </div>
 
-                {/* Error display */}
+
                 <AnimatePresence>
                     {error && (
                         <motion.div

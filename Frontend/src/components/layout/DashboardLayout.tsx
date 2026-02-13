@@ -61,16 +61,16 @@ const DashboardLayout: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[var(--color-bg)] text-[var(--color-text)]">
-            {/* ── Header ── */}
+
             <header className="bg-[var(--color-surface)] border-b border-[var(--color-border)] sticky top-0 z-50">
                 <div className="max-w-[1440px] mx-auto px-6 h-16 flex items-center justify-between">
-                    {/* Brand */}
+
                     <div className="flex items-center gap-8">
                         <div className="text-xl font-bold tracking-tight select-none" style={{ fontFamily: 'var(--font-mono)' }}>
                             GRID<span className="text-[var(--color-accent)]">AI</span>
                         </div>
 
-                        {/* Nav */}
+
                         <nav className="hidden md:flex items-center gap-1">
                             {navItems.map((item) => {
                                 const Icon = item.icon;
@@ -92,9 +92,9 @@ const DashboardLayout: React.FC = () => {
                         </nav>
                     </div>
 
-                    {/* Right section */}
+
                     <div className="flex items-center gap-5">
-                        {/* Status indicator */}
+
                         <div className="hidden lg:flex items-center gap-2 text-xs text-[var(--color-text-muted)]">
                             <Wifi size={14} className="text-[var(--color-positive)]" />
                             <span className="font-medium" style={{ fontFamily: 'var(--font-mono)' }}>CONNECTED</span>
@@ -102,7 +102,7 @@ const DashboardLayout: React.FC = () => {
 
                         <div className="hidden lg:block w-px h-5 bg-[var(--color-border)]" />
 
-                        {/* Clock */}
+
                         <div className="hidden lg:flex items-center gap-2 text-[13px] text-[var(--color-text-muted)]">
                             <Clock size={14} />
                             <span style={{ fontFamily: 'var(--font-mono)' }}>{clock}</span>
@@ -110,7 +110,7 @@ const DashboardLayout: React.FC = () => {
 
                         <div className="w-px h-5 bg-[var(--color-border)]" />
 
-                        {/* Theme Toggle */}
+
                         <button
                             onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
                             className="w-9 h-9 rounded-md bg-[var(--color-card)] border border-[var(--color-border)] flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-accent)] hover:border-[var(--color-accent)] transition-colors duration-150"
@@ -121,7 +121,7 @@ const DashboardLayout: React.FC = () => {
 
                         <div className="w-px h-5 bg-[var(--color-border)]" />
 
-                        {/* Profile */}
+
                         <div className="relative">
                             <button
                                 onClick={(e) => { e.stopPropagation(); setIsProfileOpen(!isProfileOpen); }}
@@ -162,7 +162,7 @@ const DashboardLayout: React.FC = () => {
                 </div>
             </header>
 
-            {/* ── Main Content ── */}
+
             <main className="max-w-[1440px] mx-auto px-6 py-7">
                 <AnimatePresence mode="wait">
                     <motion.div

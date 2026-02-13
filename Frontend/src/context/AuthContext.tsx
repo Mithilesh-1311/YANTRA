@@ -19,14 +19,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Get initial session
+
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
             setLoading(false);
         });
 
-        // Listen for auth changes
+
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
@@ -46,7 +46,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         });
 
         if (error) {
-            // If rate limited on signup, try signing in (user may already exist)
+
             if (error.message.toLowerCase().includes('rate limit')) {
                 const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
                 if (!signInError) return { error: null };
@@ -55,8 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             return { error: error.message };
         }
 
-        // If email confirmation is enabled, user won't have a session yet
-        // Auto sign-in after signup to handle both cases
+
         if (!data.session) {
             const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
             if (signInError) {

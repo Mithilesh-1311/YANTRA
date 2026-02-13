@@ -40,7 +40,7 @@ const Carbon: React.FC = () => {
                 </div>
             </div>
 
-            {/* Stats */}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {stats.map((stat) => (
                     <div key={stat.label} className="card p-6">
@@ -56,9 +56,9 @@ const Carbon: React.FC = () => {
                 ))}
             </div>
 
-            {/* Charts Row */}
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* CO2 Offset Sources Pie Chart */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <BarChart3 size={15} className="text-[var(--color-positive)]" />
@@ -96,7 +96,7 @@ const Carbon: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Monthly Credits Chart */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <TrendingUp size={15} className="text-[var(--color-accent)]" />
@@ -129,7 +129,7 @@ const Carbon: React.FC = () => {
                 </div>
             </div>
 
-            {/* Offset Market */}
+
             <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b border-[var(--color-border)]">
                     <h3 className="text-base font-semibold text-white">Offset Market</h3>

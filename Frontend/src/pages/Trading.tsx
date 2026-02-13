@@ -2,7 +2,7 @@ import React from 'react';
 import { buildingStats } from '../services/mockData';
 import { Battery, Activity, ArrowRight, Clock, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 
-// Mock transaction data matching the reference UI
+
 const activeTransactions = [
     { id: 1, from: 'Building 2', to: 'Building 3', energy: 15, status: 'In Progress', time: '12:45 PM' },
     { id: 2, from: 'Building 4', to: 'Building 1', energy: 10, status: 'Completed', time: '12:30 PM' },
@@ -48,7 +48,7 @@ const Trading: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-enter">
-            {/* Header */}
+
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-white">P2P Energy Transfer Marketplace</h1>
@@ -62,9 +62,9 @@ const Trading: React.FC = () => {
                 </div>
             </div>
 
-            {/* Top Stats Row */}
+
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {/* Current Buyers */}
+
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Current Buyers</p>
                     <div className="flex items-end justify-between">
@@ -76,7 +76,7 @@ const Trading: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Current Sellers */}
+
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Current Sellers</p>
                     <div className="flex items-end justify-between">
@@ -88,7 +88,7 @@ const Trading: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Central Battery Level */}
+
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Central Battery Level</p>
                     <div className="flex items-end justify-between mb-3">
@@ -109,7 +109,7 @@ const Trading: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Grid Stability Score */}
+
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Grid Stability Score</p>
                     <div className="flex items-end justify-between mb-3">
@@ -131,7 +131,7 @@ const Trading: React.FC = () => {
                 </div>
             </div>
 
-            {/* Active Energy Transactions */}
+
             <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                     <div>
@@ -161,7 +161,7 @@ const Trading: React.FC = () => {
                         <tbody>
                             {activeTransactions.map((tx) => (
                                 <tr key={tx.id}>
-                                    {/* From */}
+
                                     <td>
                                         <span className="inline-flex items-center gap-2">
                                             <span className="px-3 py-1 text-xs font-semibold rounded bg-[rgba(96,165,250,0.12)] text-[#60a5fa] border border-[rgba(96,165,250,0.2)]" style={{ fontFamily: 'var(--font-mono)' }}>
@@ -170,29 +170,29 @@ const Trading: React.FC = () => {
                                             <ArrowRight size={14} className="text-[var(--color-text-dim)]" />
                                         </span>
                                     </td>
-                                    {/* To */}
+
                                     <td>
                                         <span className={`px-3 py-1 text-xs font-semibold rounded border ${tx.to === 'Central Battery'
-                                                ? 'bg-[rgba(52,211,153,0.12)] text-[var(--color-positive)] border-[rgba(52,211,153,0.2)]'
-                                                : 'bg-[rgba(248,113,113,0.12)] text-[var(--color-negative)] border-[rgba(248,113,113,0.2)]'
+                                            ? 'bg-[rgba(52,211,153,0.12)] text-[var(--color-positive)] border-[rgba(52,211,153,0.2)]'
+                                            : 'bg-[rgba(248,113,113,0.12)] text-[var(--color-negative)] border-[rgba(248,113,113,0.2)]'
                                             }`} style={{ fontFamily: 'var(--font-mono)' }}>
                                             {tx.to}
                                         </span>
                                     </td>
-                                    {/* Energy */}
+
                                     <td style={{ textAlign: 'center' }}>
                                         <span className="text-white font-semibold" style={{ fontFamily: 'var(--font-mono)' }}>
                                             {tx.energy} <span className="text-[var(--color-text-dim)] font-normal text-xs">kWh</span>
                                         </span>
                                     </td>
-                                    {/* Status */}
+
                                     <td>
                                         <span className={`flex items-center gap-1.5 ${statusColor(tx.status)}`}>
                                             <StatusIcon status={tx.status} />
                                             <span className="text-sm font-medium">{tx.status}</span>
                                         </span>
                                     </td>
-                                    {/* Timestamp */}
+
                                     <td style={{ textAlign: 'right' }}>
                                         <span className="text-[var(--color-text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
                                             {tx.time}
@@ -204,7 +204,7 @@ const Trading: React.FC = () => {
                     </table>
                 </div>
 
-                {/* Legend */}
+
                 <div className="px-6 py-3 border-t border-[var(--color-border)] flex items-center gap-6">
                     <span className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                         <Loader2 size={13} className="text-[var(--color-accent)]" /> In Progress

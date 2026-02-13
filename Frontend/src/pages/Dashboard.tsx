@@ -21,7 +21,7 @@ const DashboardOverview: React.FC = () => {
 
     const sparkData = Array.from({ length: 20 }, (_, i) => ({ val: 40 + Math.sin(i / 2) * 10 + Math.random() * 8 }));
 
-    // Data for pie charts
+
     const solarPieData = buildingStats.map(b => ({ name: b.name, value: b.solar }));
     const loadPieData = buildingStats.map(b => ({ name: b.name, value: b.load }));
 
@@ -44,7 +44,7 @@ const DashboardOverview: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-enter">
-            {/* Header */}
+
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-white">Grid Overview</h1>
@@ -58,9 +58,9 @@ const DashboardOverview: React.FC = () => {
                 </div>
             </div>
 
-            {/* Key Metrics */}
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-                {/* Demand */}
+
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Current Demand</span>
@@ -78,7 +78,7 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Generation */}
+
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Current Generation</span>
@@ -96,7 +96,7 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Frequency */}
+
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Grid Frequency</span>
@@ -114,7 +114,7 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Market Price */}
+
                 <div className="card p-6">
                     <div className="flex items-center justify-between mb-3">
                         <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">P2P Market Price</span>
@@ -132,9 +132,9 @@ const DashboardOverview: React.FC = () => {
                 </div>
             </div>
 
-            {/* Energy Breakdown Pie Charts */}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-                {/* Solar Generation Breakdown */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <Sun size={15} className="text-[var(--color-warning)]" />
@@ -166,7 +166,7 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Load Consumption Breakdown */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <Building2 size={15} className="text-[var(--color-negative)]" />
@@ -198,7 +198,7 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Battery Status Overview */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <BatteryCharging size={15} className="text-[var(--color-positive)]" />
@@ -224,7 +224,7 @@ const DashboardOverview: React.FC = () => {
                 </div>
             </div>
 
-            {/* Building Table + System Health */}
+
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div className="lg:col-span-2 card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)]">
@@ -270,7 +270,7 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-                {/* System Health */}
+
                 <div className="card p-6">
                     <h3 className="text-base font-semibold text-white mb-5">System Health</h3>
                     <div className="space-y-4">

@@ -26,7 +26,7 @@ const Forecasts: React.FC = () => {
                 </div>
             </div>
 
-            {/* Main Chart */}
+
             <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                     <div>
@@ -64,7 +64,7 @@ const Forecasts: React.FC = () => {
                 </div>
             </div>
 
-            {/* Surplus / Deficit Bar Chart */}
+
             <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                     <div>
@@ -104,7 +104,7 @@ const Forecasts: React.FC = () => {
                 </div>
             </div>
 
-            {/* Metric Cards */}
+
             <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
                 <div className={`card p-6 border-l-[3px] ${isSurplus ? 'border-l-[var(--color-positive)]' : 'border-l-[var(--color-negative)]'}`}>
                     <span className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider font-semibold">Net Position (Next Hr)</span>

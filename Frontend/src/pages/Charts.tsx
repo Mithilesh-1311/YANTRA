@@ -19,7 +19,7 @@ const Charts: React.FC = () => {
         <div className="space-y-6 animate-enter">
             <h1 className="text-2xl font-semibold text-white">Grid Analytics</h1>
 
-            {/* Demand vs Generation */}
+
             <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                     <div>
@@ -65,7 +65,7 @@ const Charts: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-                {/* Frequency Chart */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)]">
                         <h3 className="text-base font-semibold text-white">Grid Frequency</h3>
@@ -89,7 +89,7 @@ const Charts: React.FC = () => {
                     </div>
                 </div>
 
-                {/* System Alerts */}
+
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)]">
                         <h3 className="text-base font-semibold text-white">System Alerts</h3>

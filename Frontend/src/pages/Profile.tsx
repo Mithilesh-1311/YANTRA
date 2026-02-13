@@ -42,7 +42,7 @@ const Profile: React.FC = () => {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-                {/* Profile Card */}
+
                 <div className="card p-7 text-center">
                     <div className="w-24 h-24 rounded-md bg-[var(--color-bg)] border border-[var(--color-border)] mx-auto mb-5 flex items-center justify-center text-3xl font-bold text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-mono)' }}>
                         {displayName.charAt(0).toUpperCase()}
@@ -66,7 +66,7 @@ const Profile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Details Form */}
+
                 <div className="card p-7 col-span-1 md:col-span-2">
                     <h3 className="text-base font-semibold text-white mb-6">Personal Information</h3>
                     <div className="space-y-5">
@@ -123,7 +123,7 @@ const Profile: React.FC = () => {
                 </div>
             </div>
 
-            {/* Quick Stats */}
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="card p-5 flex items-center gap-4">
                     <div className="w-10 h-10 rounded-md bg-[rgba(52,211,153,0.1)] flex items-center justify-center">
