@@ -52,12 +52,7 @@ const Landing: React.FC = () => {
                         >
                             Enter Control Panel <ArrowRight size={18} />
                         </Link>
-                        <Link
-                            to="/auth"
-                            className="px-7 py-3.5 border border-[var(--color-border)] text-[var(--color-text-muted)] font-medium text-[15px] rounded-md hover:border-[var(--color-text-muted)] hover:text-white transition-colors"
-                        >
-                            View Demo
-                        </Link>
+
                     </div>
                 </motion.div>
 
