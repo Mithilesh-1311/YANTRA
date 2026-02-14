@@ -8,6 +8,11 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Root health check
+app.get('/', (req, res) => {
+    res.send('Backend is operational. Use /api/health for detailed status.');
+});
+
 // Middleware
 app.use(cors({
     origin: process.env.CORS_ORIGIN || '*',
