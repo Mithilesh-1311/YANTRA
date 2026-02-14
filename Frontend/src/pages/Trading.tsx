@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { buildingStats } from '../services/mockData';
+import React, { useState, useEffect, useCallback } from 'react';
+import { fetchBuildings, fetchGridOverview, API_BASE } from '../services/api';
 import {
     Battery, Activity, CheckCircle2, AlertCircle,
     Loader2, Zap, Building2
@@ -78,16 +78,37 @@ const Trading: React.FC = () => {
     const [selectedOffer, setSelectedOffer] = useState<EnergyOffer | null>(null);
     const [buyAmount, setBuyAmount] = useState<string>('');
 
+    // --- LIVE DATA STATE ---
+    const [buyers, setBuyers] = useState(2);
+    const [sellers, setSellers] = useState(3);
+    const [centralBattery, setCentralBattery] = useState(85);
+    const [gridStability, setGridStability] = useState(76);
+
+    const refreshStats = useCallback(async () => {
+        try {
+            const [buildings, grid] = await Promise.all([
+                fetchBuildings(),
+                fetchGridOverview(),
+            ]);
+            setBuyers(buildings.filter(b => b.status === 'Deficit').length);
+            setSellers(buildings.filter(b => b.status === 'Surplus').length);
+            setCentralBattery(grid.centralBattery);
+            setGridStability(grid.gridStability);
+        } catch (err) {
+            console.warn('[Trading] API fallback:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        refreshStats();
+        const id = setInterval(refreshStats, 5000);
+        return () => clearInterval(id);
+    }, []);
+
     // --- DERIVED STATE ---
     const currentStatus = requiredEnergy > 0 ? 'Deficit' : 'Surplus';
     const displayedEnergy = Math.abs(requiredEnergy);
     const statusColor = requiredEnergy > 0 ? 'var(--color-negative)' : 'var(--color-positive)';
-
-    // --- OLD LOGIC (visual only) ---
-    const buyers = buildingStats.filter(b => b.status === 'Deficit').length;
-    const sellers = buildingStats.filter(b => b.status === 'Surplus').length;
-    const centralBattery = 85;
-    const gridStability = 76;
     const stabilityColor = gridStability >= 70 ? 'var(--color-positive)' : gridStability >= 40 ? 'var(--color-warning)' : 'var(--color-negative)';
 
     // --- HANDLERS ---
@@ -156,7 +177,7 @@ const Trading: React.FC = () => {
 
             // Save to Backend
             try {
-                await fetch('http://localhost:5000/api/trades', {
+                await fetch(`${API_BASE}/api/trades`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({

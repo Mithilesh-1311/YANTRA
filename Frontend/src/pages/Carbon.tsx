@@ -1,5 +1,7 @@
-import React from 'react';
-import { carbonStats } from '../services/mockData';
+import React, { useState, useEffect, useCallback } from 'react';
+import { carbonStats as fallbackCarbonStats } from '../services/mockData';
+import { fetchCarbon } from '../services/api';
+import type { CarbonResponse } from '../services/api';
 import { Leaf, ShieldCheck, TreePine, TrendingUp, BarChart3 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -22,7 +24,26 @@ const monthlyData = [
 ];
 
 const Carbon: React.FC = () => {
-    const stats = carbonStats;
+    const [stats, setStats] = useState(fallbackCarbonStats);
+    const [rating, setRating] = useState('A+');
+    const [sources, setSources] = useState(offsetSources);
+
+    const refresh = useCallback(async () => {
+        try {
+            const data: CarbonResponse = await fetchCarbon();
+            setStats(data.stats);
+            setRating(data.rating);
+            if (data.offsetSources?.length) setSources(data.offsetSources);
+        } catch (err) {
+            console.warn('[Carbon] API fallback to mock:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        refresh();
+        const id = setInterval(refresh, 10000);
+        return () => clearInterval(id);
+    }, []);
 
     return (
         <div className="space-y-6 animate-enter">
@@ -35,7 +56,7 @@ const Carbon: React.FC = () => {
                     <Leaf size={18} className="text-[var(--color-positive)]" />
                     <div>
                         <p className="text-[11px] text-[var(--color-text-muted)] uppercase tracking-wider">Rating</p>
-                        <p className="text-lg font-bold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>A+</p>
+                        <p className="text-lg font-bold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>{rating}</p>
                     </div>
                 </div>
             </div>
@@ -68,7 +89,7 @@ const Carbon: React.FC = () => {
                         <div className="h-52 w-full">
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
-                                    <Pie data={offsetSources} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" labelLine={false} stroke="none"
+                                    <Pie data={sources} cx="50%" cy="50%" innerRadius={50} outerRadius={85} dataKey="value" labelLine={false} stroke="none"
                                         label={({ cx, cy, midAngle, innerRadius, outerRadius, percent }) => {
                                             const RADIAN = Math.PI / 180;
                                             const radius = (innerRadius || 0) + ((outerRadius || 0) - (innerRadius || 0)) * 0.5;
@@ -77,7 +98,7 @@ const Carbon: React.FC = () => {
                                             return <text x={x} y={y} fill="var(--color-text)" textAnchor="middle" dominantBaseline="central" fontSize={11} fontWeight="bold" fontFamily="var(--font-mono)">{`${((percent || 0) * 100).toFixed(0)}%`}</text>;
                                         }}
                                     >
-                                        {offsetSources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                                        {sources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                     </Pie>
                                     <Tooltip
                                         contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }}
@@ -87,7 +108,7 @@ const Carbon: React.FC = () => {
                             </ResponsiveContainer>
                         </div>
                         <div className="flex gap-5 mt-2">
-                            {offsetSources.map((d, i) => (
+                            {sources.map((d, i) => (
                                 <span key={d.name} className="flex items-center gap-1.5 text-xs text-[var(--color-text-muted)]">
                                     <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: COLORS[i] }} />{d.name}
                                 </span>

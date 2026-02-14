@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { fetchBuildings } from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -88,39 +89,75 @@ function useEnergyData() {
     const [flows, setFlows] = useState<EnergyFlow[]>([]);
 
     useEffect(() => {
-        // Update building states every 3 seconds
-        const buildingInterval = setInterval(() => {
-            const newBuildings = generateBuildingStates();
-            setBuildings(newBuildings);
+        // Fetch from API OR fall back to mock
+        const refreshBuildings = async () => {
+            try {
+                const apiBuildings = await fetchBuildings();
+                const mapped: BuildingState[] = apiBuildings.map((b, i) => {
+                    const solar = b.solar || 0;
+                    const load = b.load || 0;
+                    const net = solar - load;
+                    const status: BuildingStatus = net > 2 ? 'surplus' : net < -2 ? 'deficit' : 'neutral';
+                    return {
+                        building_id: b.id,
+                        name: b.name || BUILDING_NAMES[i] || b.id,
+                        battery_level_percentage: Math.min(100, Math.max(5, b.battery || 50)),
+                        current_status: status,
+                        net_flow_kw: parseFloat(net.toFixed(1)),
+                        solar_kw: solar,
+                        load_kw: load,
+                        ai_prediction: PREDICTIONS[Math.floor(Math.random() * PREDICTIONS.length)],
+                    };
+                });
+                setBuildings(mapped);
 
-            // Derive flows from buildings — both P2P direct and hub-routed
-            const surplus = newBuildings.filter(b => b.current_status === 'surplus');
-            const deficit = newBuildings.filter(b => b.current_status === 'deficit');
-            const newFlows: EnergyFlow[] = [];
-            surplus.forEach((s, si) => {
-                deficit.forEach((d, di) => {
-                    // Alternate between P2P direct and hub-routed
-                    const isP2P = (si + di) % 2 === 0;
-                    newFlows.push({
-                        from: s.building_id,
-                        to: d.building_id,
-                        amount: Math.abs(s.net_flow_kw),
-                        type: isP2P ? 'p2p' : 'hub',
+                // Derive flows
+                const surplus = mapped.filter(b => b.current_status === 'surplus');
+                const deficit = mapped.filter(b => b.current_status === 'deficit');
+                const neutral = mapped.filter(b => b.current_status === 'neutral');
+                const newFlows: EnergyFlow[] = [];
+                surplus.forEach((s, si) => {
+                    deficit.forEach((d, di) => {
+                        newFlows.push({
+                            from: s.building_id,
+                            to: d.building_id,
+                            amount: Math.abs(s.net_flow_kw),
+                            type: (si + di) % 2 === 0 ? 'p2p' : 'hub',
+                        });
                     });
                 });
-            });
-            // Also generate some neutral→surplus P2P trades occasionally
-            const neutral = newBuildings.filter(b => b.current_status === 'neutral');
-            if (neutral.length > 0 && surplus.length > 0) {
-                newFlows.push({
-                    from: surplus[0].building_id,
-                    to: neutral[0].building_id,
-                    amount: parseFloat((Math.random() * 2 + 0.5).toFixed(1)),
-                    type: 'p2p',
+                if (neutral.length > 0 && surplus.length > 0) {
+                    newFlows.push({
+                        from: surplus[0].building_id,
+                        to: neutral[0].building_id,
+                        amount: parseFloat((Math.random() * 2 + 0.5).toFixed(1)),
+                        type: 'p2p',
+                    });
+                }
+                setFlows(newFlows);
+            } catch {
+                // Fallback to mock
+                const newBuildings = generateBuildingStates();
+                setBuildings(newBuildings);
+                const surplus = newBuildings.filter(b => b.current_status === 'surplus');
+                const deficit = newBuildings.filter(b => b.current_status === 'deficit');
+                const newFlows: EnergyFlow[] = [];
+                surplus.forEach((s, si) => {
+                    deficit.forEach((d, di) => {
+                        newFlows.push({
+                            from: s.building_id,
+                            to: d.building_id,
+                            amount: Math.abs(s.net_flow_kw),
+                            type: (si + di) % 2 === 0 ? 'p2p' : 'hub',
+                        });
+                    });
                 });
+                setFlows(newFlows);
             }
-            setFlows(newFlows);
-        }, 3000);
+        };
+
+        refreshBuildings();
+        const buildingInterval = setInterval(refreshBuildings, 3000);
 
         // Generate new transaction every 2.5 seconds
         const txInterval = setInterval(() => {

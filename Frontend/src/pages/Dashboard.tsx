@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-    buildingStats,
+    fetchBuildings,
+    fetchBuildingStates,
+    fetchBuildingPredictions,
+    fetchGridOverview,
+} from '../services/api';
+import type { BuildingSimState, BuildingPrediction } from '../services/api';
+import {
     generateBuildingStates,
     generatePredictions,
     generateCentralBattery,
 } from '../services/mockData';
-import type { BuildingSimState, BuildingPrediction } from '../services/mockData';
 
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import { Sun, Building2, BatteryCharging } from 'lucide-react';
@@ -18,32 +23,64 @@ const DashboardOverview: React.FC = () => {
     const [states, setStates] = useState<Record<string, BuildingSimState>>(() => generateBuildingStates(42));
     const [predictions, setPredictions] = useState<Record<string, BuildingPrediction>>(() => generatePredictions());
     const [centralBat, setCentralBat] = useState(() => generateCentralBattery());
+    const [buildingList, setBuildingList] = useState<any[]>([]);
 
 
-    const refresh = useCallback(() => {
-        setSimMinute(prev => {
-            const next = prev + 1;
-            setStates(generateBuildingStates(next));
-            setPredictions(generatePredictions());
-            setCentralBat(generateCentralBattery());
-
-            return next;
-        });
-    }, []);
+    const refresh = useCallback(async () => {
+        try {
+            const [statesData, predsData, gridData, buildingsData] = await Promise.all([
+                fetchBuildingStates(),
+                fetchBuildingPredictions(),
+                fetchGridOverview(),
+                fetchBuildings(),
+            ]);
+            setStates(statesData);
+            setPredictions(predsData);
+            setCentralBat({
+                kwh: gridData.totalBatteryKwh ?? gridData.centralBattery * 0.75,
+                capacity: gridData.totalBatteryCap ?? 100,
+                p2p_count: gridData.surplusCount ?? Math.floor(Math.random() * 20) + 5,
+                central_count: gridData.deficitCount ?? Math.floor(Math.random() * 10) + 2,
+                grid_count: Math.floor(Math.random() * 5),
+            });
+            setBuildingList(buildingsData);
+            setSimMinute(statesData[BUILDING_IDS[0]]?.sim_minute ?? simMinute + 1);
+        } catch (err) {
+            console.warn('[Dashboard] API fallback to mock:', err);
+            setSimMinute(prev => {
+                const next = prev + 1;
+                setStates(generateBuildingStates(next));
+                setPredictions(generatePredictions());
+                setCentralBat(generateCentralBattery());
+                return next;
+            });
+        }
+    }, [simMinute]);
 
     useEffect(() => {
+        refresh(); // initial fetch
         const id = setInterval(refresh, 3000);
         return () => clearInterval(id);
-    }, [refresh]);
+    }, []);
 
     const cbPct = ((centralBat.kwh / centralBat.capacity) * 100).toFixed(1);
 
-    // Pie chart data for Solar & Load (kept from original dashboard)
-    const solarPieData = buildingStats.map(b => ({ name: b.name, value: b.solar }));
-    const loadPieData = buildingStats.map(b => ({ name: b.name, value: b.load }));
-    const totalSolar = buildingStats.reduce((s, b) => s + b.solar, 0);
-    const totalLoad = buildingStats.reduce((s, b) => s + b.load, 0);
-    const avgBattery = Math.round(buildingStats.reduce((s, b) => s + b.battery, 0) / buildingStats.length);
+    // Pie chart data — use live building data if available, else fallback
+    const pieSource = buildingList.length > 0
+        ? buildingList.map(b => ({ id: b.id, name: b.name, solar: b.solar, load: b.load, battery: b.battery, status: b.status }))
+        : [
+            { id: 'B1', name: 'Main Admin Block', solar: 120, load: 85, battery: 78, status: 'Surplus' },
+            { id: 'B2', name: 'Research Lab', solar: 45, load: 150, battery: 45, status: 'Deficit' },
+            { id: 'B3', name: 'Student Dorms', solar: 80, load: 60, battery: 92, status: 'Surplus' },
+            { id: 'B4', name: 'Cafeteria', solar: 30, load: 45, battery: 20, status: 'Deficit' },
+            { id: 'B5', name: 'Guesthouse / EV Station', solar: 60, load: 40, battery: 85, status: 'Surplus' },
+        ];
+
+    const solarPieData = pieSource.map(b => ({ name: b.name, value: b.solar }));
+    const loadPieData = pieSource.map(b => ({ name: b.name, value: b.load }));
+    const totalSolar = pieSource.reduce((s, b) => s + b.solar, 0);
+    const totalLoad = pieSource.reduce((s, b) => s + b.load, 0);
+    const avgBattery = Math.round(pieSource.reduce((s, b) => s + b.battery, 0) / pieSource.length);
 
     const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
         const RADIAN = Math.PI / 180;
@@ -358,7 +395,7 @@ const DashboardOverview: React.FC = () => {
                         <h3 className="text-base font-semibold text-white">Battery Status</h3>
                     </div>
                     <div className="p-5 space-y-3">
-                        {buildingStats.map((b, i) => (
+                        {pieSource.map((b, i) => (
                             <div key={b.id}>
                                 <div className="flex justify-between text-xs mb-1">
                                     <span className="text-[var(--color-text-muted)]">{b.name}</span>
@@ -395,7 +432,7 @@ const DashboardOverview: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {buildingStats.map((b) => (
+                                {pieSource.map((b) => (
                                     <tr key={b.id}>
                                         <td className="font-medium text-white">{b.name}</td>
                                         <td className="text-right text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>{b.solar}</td>
