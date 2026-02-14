@@ -8,9 +8,27 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Root health check
-app.get('/', (req, res) => {
-    res.send('Backend is operational. Use /api/health for detailed status.');
+// Serve Frontend Static Files
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Root health check (API only)
+app.get('/api/health', (req, res) => {
+    res.json({ status: 'ok', live: hasLiveData() });
+});
+
+// Serve static files from Frontend/dist
+app.use(express.static(path.join(__dirname, '../Frontend/dist')));
+
+// Handle SPA routing - return index.html for any unknown route NOT starting with /api
+app.get('*', (req, res) => {
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API route not found' });
+    }
+    res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
 
 // Middleware
