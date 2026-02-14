@@ -56,7 +56,7 @@ Your Python script (`Backend/Machine Learning/generator (1).py`) currently sends
     ```
     To:
     ```python
-    url = "https://your-app-name.onrender.com/update"
+    url = "https://yantra-jajt.onrender.com/update"
     ```
 4.  Run the Python script locally to start feeding data to your live cloud backend!
 

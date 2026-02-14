@@ -51,8 +51,6 @@ const Forecasts: React.FC = () => {
         },
     };
 
-    // Compute Net Position from live building surplus/deficit
-    const netPos = buildingSurplusDeficit.reduce((s, b) => s + b.value, 0);
     const peakPredicted = forecastData.length > 0
         ? Math.max(...forecastData.map(d => d.predicted)) + ' kW'
         : '5,200 kW';
@@ -70,11 +68,9 @@ const Forecasts: React.FC = () => {
             </div>
 
             {/* Metrics row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {[
-                    { label: 'Net Position', value: `${netPos >= 0 ? '+' : ''}${netPos} kW`, color: netPos >= 0 ? 'text-[var(--color-positive)]' : 'text-[var(--color-negative)]' },
                     { label: 'Predicted Peak Load', value: peakPredicted, color: 'text-[var(--color-accent)]' },
-                    { label: 'Weather Impact', value: '-3.2%', color: 'text-[var(--color-warning)]' },
                     { label: 'Model Confidence', value: `${confidence}%`, color: 'text-white' },
                 ].map(m => (
                     <div key={m.label} className="card p-5">

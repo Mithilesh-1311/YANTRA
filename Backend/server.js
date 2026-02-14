@@ -338,7 +338,7 @@ app.get('/api/transactions', (_req, res) => {
 // Store new trade
 app.post('/api/trades', async (req, res) => {
     try {
-        const { from, to, energy, price, txHash, status } = req.body;
+        const { from, to, energy, price, txHash, status, type } = req.body;
 
         const newTrade = {
             id: transactions.length + 1,
@@ -348,7 +348,8 @@ app.post('/api/trades', async (req, res) => {
             price,
             status: status || 'Completed',
             time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
-            txHash
+            txHash,
+            type: type || 'manual'
         };
 
         // 1. Add to in-memory store for immediate UI update
@@ -365,7 +366,8 @@ app.post('/api/trades', async (req, res) => {
                     energy_amount: energy,
                     price_per_unit: price,
                     tx_hash: txHash,
-                    status: status || 'Completed'
+                    status: status || 'Completed',
+                    type: type || 'manual'
                 }]);
 
             if (error) console.warn('Supabase insert failed:', error.message);
@@ -379,6 +381,166 @@ app.post('/api/trades', async (req, res) => {
         res.status(500).json({ success: false, error: 'Failed to save trade' });
     }
 });
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-TRADE SYSTEM
+// ═══════════════════════════════════════════════════════════════
+
+// Wallet addresses for each building (replace with real Sepolia addresses)
+const BUILDING_WALLETS = {
+    B1: '0x0000000000000000000000000000000000000001',
+    B2: '0x1111111111111111111111111111111111111111',
+    B3: '0x2222222222222222222222222222222222222222',
+    B4: '0x3333333333333333333333333333333333333333',
+    B5: '0x4444444444444444444444444444444444444444',
+};
+
+// Building display names for the frontend
+const BUILDING_NAMES = {
+    B1: 'Building 1',
+    B2: 'Building 2',
+    B3: 'Building 3',
+    B4: 'Building 4',
+    B5: 'Building 5',
+};
+
+// Price per kWh in Wei (0.00001 ETH)
+const PRICE_PER_KWH_WEI = '10000000000000'; // 0.00001 ETH
+
+/**
+ * GET /api/auto-trade/check
+ * 
+ * Scans all buildings. For each building in deficit, finds the building
+ * with the maximum surplus and returns a trade recommendation.
+ */
+app.get('/api/auto-trade/check', (_req, res) => {
+    try {
+        const allBuildings = hasLiveData()
+            ? Object.values(liveBuildings)
+            : getSimulatedBuildings();
+
+        // Find deficit buildings
+        const deficitBuildings = allBuildings.filter(b => b.is_deficit || b.status === 'Deficit');
+
+        // Find surplus buildings and compute surplus amount
+        const surplusBuildings = allBuildings
+            .filter(b => !b.is_deficit && b.status !== 'Deficit')
+            .map(b => ({
+                ...b,
+                surplusKwh: Math.max(0, (b.solar_kw || b.solar || 0) - (b.total_drained_kwh * 60 || b.load || 0)),
+            }))
+            .filter(b => b.surplusKwh > 0)
+            .sort((a, b_item) => b_item.surplusKwh - a.surplusKwh); // highest surplus first
+
+        if (deficitBuildings.length === 0 || surplusBuildings.length === 0) {
+            return res.json({ needed: false, trades: [], reason: 'No deficit or no surplus buildings' });
+        }
+
+        const trades = [];
+
+        for (const buyer of deficitBuildings) {
+            // Pick the seller with the highest surplus
+            const seller = surplusBuildings[0];
+            if (!seller) continue;
+
+            const deficitKwh = Math.max(0,
+                (buyer.total_drained_kwh * 60 || buyer.load || 0) -
+                (buyer.solar_kw || buyer.solar || 0)
+            );
+
+            if (deficitKwh <= 0) continue;
+
+            // Trade amount = min(deficit, seller surplus)
+            const tradeAmountKwh = Math.min(deficitKwh, seller.surplusKwh);
+            const tradeAmountInt = Math.ceil(tradeAmountKwh);
+
+            // Calculate total price in Wei
+            const totalPriceWei = (BigInt(PRICE_PER_KWH_WEI) * BigInt(tradeAmountInt)).toString();
+
+            trades.push({
+                buyerBuildingId: buyer.id,
+                buyerName: BUILDING_NAMES[buyer.id] || buyer.name || buyer.id,
+                sellerBuildingId: seller.id,
+                sellerName: BUILDING_NAMES[seller.id] || seller.name || seller.id,
+                sellerAddress: BUILDING_WALLETS[seller.id],
+                deficitKwh: +deficitKwh.toFixed(2),
+                surplusKwh: +seller.surplusKwh.toFixed(2),
+                tradeAmountKwh: tradeAmountInt,
+                pricePerKwhWei: PRICE_PER_KWH_WEI,
+                totalPriceWei,
+            });
+        }
+
+        res.json({ needed: trades.length > 0, trades });
+    } catch (err) {
+        console.error('[/api/auto-trade/check] Error:', err.message);
+        res.status(500).json({ needed: false, trades: [], error: 'Internal error' });
+    }
+});
+
+/**
+ * POST /api/auto-trade/execute
+ * 
+ * Called by the frontend after a successful on-chain transaction.
+ * Logs the trade and adjusts in-memory building energy values.
+ */
+app.post('/api/auto-trade/execute', async (req, res) => {
+    try {
+        const { buyerBuildingId, sellerBuildingId, energyKwh, txHash, priceWei } = req.body;
+
+        // Adjust in-memory live data if available
+        if (liveBuildings[sellerBuildingId]) {
+            const seller = liveBuildings[sellerBuildingId];
+            seller.solar_kw = Math.max(0, (seller.solar_kw || 0) - energyKwh);
+            seller.solar = Math.max(0, (seller.solar || 0) - Math.round(energyKwh));
+        }
+        if (liveBuildings[buyerBuildingId]) {
+            const buyer = liveBuildings[buyerBuildingId];
+            buyer.battery_kwh = Math.min(buyer.battery_cap, (buyer.battery_kwh || 0) + energyKwh);
+            buyer.battery = buyer.battery_cap > 0
+                ? Math.round((buyer.battery_kwh / buyer.battery_cap) * 100)
+                : buyer.battery;
+        }
+
+        // Create trade record
+        const newTrade = {
+            id: transactions.length + 1,
+            from: BUILDING_NAMES[sellerBuildingId] || sellerBuildingId,
+            to: BUILDING_NAMES[buyerBuildingId] || buyerBuildingId,
+            energy: energyKwh,
+            status: 'Completed',
+            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+            txHash,
+            type: 'auto',
+        };
+        transactions.unshift(newTrade);
+        if (transactions.length > 20) transactions.pop();
+
+        // Persist to Supabase (best-effort)
+        try {
+            const { error } = await supabase
+                .from('transactions')
+                .insert([{
+                    from_entity: newTrade.from,
+                    to_entity: newTrade.to,
+                    energy_amount: energyKwh,
+                    price_per_unit: 0.00001,
+                    tx_hash: txHash,
+                    status: 'Completed',
+                    type: 'auto',
+                }]);
+            if (error) console.warn('Supabase auto-trade insert failed:', error.message);
+        } catch (err) {
+            console.warn('Supabase error:', err.message);
+        }
+
+        res.status(201).json({ success: true, trade: newTrade });
+    } catch (error) {
+        console.error('Error executing auto-trade:', error);
+        res.status(500).json({ success: false, error: 'Failed to execute auto-trade' });
+    }
+});
+
 
 // ─── Market prices ─────────────────────────────────────────────
 app.get('/api/market/prices', (_req, res) => {
