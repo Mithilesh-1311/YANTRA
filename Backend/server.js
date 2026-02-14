@@ -15,9 +15,9 @@ app.get('/', (req, res) => {
 
 // Middleware
 app.use(cors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin: '*', // Allow all origins for the hackathon (simplest fix)
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    credentials: true,
+    // credentials: true, // Disable to allow wildcard origin
 }));
 app.use(express.json());
 

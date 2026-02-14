@@ -138,6 +138,11 @@ const DashboardOverview: React.FC = () => {
                         </span>
                     </div>
                 </div>
+                {/* DEBUG INFO - REMOVE BEFORE FINAL SUBMISSION IF DESIRED */}
+                <div className="text-[10px] text-center text-[var(--color-text-dim)] mt-1" style={{ fontFamily: 'var(--font-mono)' }}>
+                    API: {(import.meta as any).env.VITE_API_URL || 'LOCALHOST (Default)'} |
+                    STATUS: {buildingList.length > 0 ? 'CONNECTED' : 'MOCK DATA'}
+                </div>
             </div>
 
             {/* ── Central Battery Panel ── */}
