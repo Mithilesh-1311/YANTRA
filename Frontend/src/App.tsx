@@ -8,7 +8,7 @@ import DashboardOverview from './pages/Dashboard';
 import Charts from './pages/Charts';
 import Forecasts from './pages/Forecasts';
 import Trading from './pages/Trading';
-import Carbon from './pages/Carbon';
+// import Carbon from './pages/Carbon';
 import Profile from './pages/Profile';
 import Purchases from './pages/Purchases';
 import History from './pages/History';
@@ -33,7 +33,7 @@ function App() {
             <Route path="charts" element={<Charts />} />
             <Route path="forecasts" element={<Forecasts />} />
             <Route path="trading" element={<Trading />} />
-            <Route path="carbon" element={<Carbon />} />
+            {/* <Route path="carbon" element={<Carbon />} /> */}
             <Route path="profile" element={<Profile />} />
             <Route path="purchases" element={<Purchases />} />
             <Route path="history" element={<History />} />

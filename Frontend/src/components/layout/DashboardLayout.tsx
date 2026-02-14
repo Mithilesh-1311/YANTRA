@@ -7,7 +7,7 @@ import {
     BarChart3,
     BrainCircuit,
     ArrowLeftRight,
-    Leaf,
+    // Leaf,
     User,
     ShoppingBag,
     Clock,
@@ -54,7 +54,7 @@ const DashboardLayout: React.FC = () => {
         { label: 'Analytics', path: '/dashboard/charts', icon: BarChart3 },
         { label: 'Forecast', path: '/dashboard/forecasts', icon: BrainCircuit },
         { label: 'Trading', path: '/dashboard/trading', icon: ArrowLeftRight },
-        { label: 'Carbon', path: '/dashboard/carbon', icon: Leaf },
+        // { label: 'Carbon', path: '/dashboard/carbon', icon: Leaf },
     ];
 
     const isActive = (path: string) => location.pathname === path;

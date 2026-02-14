@@ -20,6 +20,7 @@ const COLORS = ['#00e5ff', '#00ffa3', '#ffd600', '#ff6d00', '#ce93d8'];
 
 const DashboardOverview: React.FC = () => {
     const [simMinute, setSimMinute] = useState(42);
+    const [simHour, setSimHour] = useState(0.7);
     const [states, setStates] = useState<Record<string, BuildingSimState>>(() => generateBuildingStates(42));
     const [predictions, setPredictions] = useState<Record<string, BuildingPrediction>>(() => generatePredictions());
     const [centralBat, setCentralBat] = useState(() => generateCentralBattery());
@@ -44,7 +45,9 @@ const DashboardOverview: React.FC = () => {
                 grid_count: Math.floor(Math.random() * 5),
             });
             setBuildingList(buildingsData);
-            setSimMinute(statesData[BUILDING_IDS[0]]?.sim_minute ?? simMinute + 1);
+            const firstState = statesData[BUILDING_IDS[0]];
+            setSimMinute(firstState?.sim_minute ?? simMinute + 1);
+            setSimHour(firstState?.hour_of_day ?? (simMinute + 1) / 60);
         } catch (err) {
             console.warn('[Dashboard] API fallback to mock:', err);
             setSimMinute(prev => {
@@ -119,12 +122,19 @@ const DashboardOverview: React.FC = () => {
                     </p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <span className="text-xs text-[var(--color-text-dim)]" style={{ fontFamily: 'var(--font-mono)' }}>
-                        SIM-MIN: {simMinute}
-                    </span>
-                    <div className="flex items-center gap-2">
-                        <span className="status-dot status-dot-positive status-dot-live" />
-                        <span className="text-xs font-semibold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>SYSTEM ONLINE</span>
+                    <div className="flex items-center gap-3 px-4 py-2 rounded-lg bg-[rgba(0,229,255,0.06)] border border-[rgba(0,229,255,0.15)]">
+                        <span className="flex items-center gap-1.5">
+                            <span className="status-dot status-dot-positive status-dot-live" />
+                            <span className="text-xs font-bold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>LIVE</span>
+                        </span>
+                        <span className="w-px h-4 bg-[var(--color-border)]" />
+                        <span className="text-xs text-[var(--color-text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
+                            SIM-MIN: <span className="text-white font-bold">{simMinute}</span>
+                        </span>
+                        <span className="w-px h-4 bg-[var(--color-border)]" />
+                        <span className="text-xs text-[var(--color-text-muted)]" style={{ fontFamily: 'var(--font-mono)' }}>
+                            HOUR: <span className="text-[var(--color-accent)] font-bold">{simHour.toFixed(2)}</span>
+                        </span>
                     </div>
                 </div>
             </div>

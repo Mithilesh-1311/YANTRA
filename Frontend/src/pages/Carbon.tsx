@@ -1,3 +1,4 @@
+/*
 import React, { useState, useEffect, useCallback } from 'react';
 import { carbonStats as fallbackCarbonStats } from '../services/mockData';
 import { fetchCarbon } from '../services/api';
@@ -200,5 +201,6 @@ const Carbon: React.FC = () => {
         </div>
     );
 };
-
+*/
+const Carbon: React.FC = () => { return null; };
 export default Carbon;
