@@ -68,10 +68,17 @@ const mockOffers: EnergyOffer[] = [
 ];
 
 const Trading: React.FC = () => {
+    // --- STATE ---
+    const [offers, setOffers] = useState<EnergyOffer[]>(mockOffers);
+    const [offerStatus, setOfferStatus] = useState<Record<string, 'idle' | 'processing' | 'completed'>>({});
+    const [requiredEnergy, setRequiredEnergy] = useState<number>(4.5); // Initial deficit
 
-    const [offerStatus, setOfferStatus] =
-        useState<Record<string, 'idle' | 'processing' | 'completed'>>({});
+    // --- DERIVED STATE ---
+    const currentStatus = requiredEnergy > 0 ? 'Deficit' : 'Surplus';
+    const displayedEnergy = Math.abs(requiredEnergy);
+    const statusColor = requiredEnergy > 0 ? 'var(--color-negative)' : 'var(--color-positive)';
 
+    // --- OLD LOGIC (visual only) ---
     const buyers = buildingStats.filter(b => b.status === 'Deficit').length;
     const sellers = buildingStats.filter(b => b.status === 'Surplus').length;
     const centralBattery = 85;
@@ -93,6 +100,30 @@ const Trading: React.FC = () => {
                 return;
             }
 
+            // check if we even need energy
+            if (requiredEnergy <= 0) {
+                alert("Energy requirement already met!");
+                return;
+            }
+
+            const offer = offers.find(o => o.id === id);
+            if (!offer) throw new Error("Offer not found");
+
+            // Calculate Amount to Buy
+            // If Grid/Battery: limited by our need.
+            // If P2P: Atomic (buy whole package), OR limited by need?
+            // Adopting strategy:
+            // - Grid/Battery: flexible, buy only what we need.
+            // - P2P: fixed package, buy the whole thing (can flip us to surplus).
+            let amountToBuy = 0;
+            if (offer.type === 'Grid' || offer.type === 'Battery') {
+                amountToBuy = Math.min(offer.amount, requiredEnergy);
+            } else {
+                amountToBuy = offer.amount;
+            }
+
+            if (amountToBuy <= 0) return;
+
             setOfferStatus(prev => ({ ...prev, [id]: 'processing' }));
 
             const provider = new ethers.BrowserProvider((window as any).ethereum);
@@ -111,19 +142,17 @@ const Trading: React.FC = () => {
             const CENTRAL_PRICE = ethers.parseEther("0.000015");
             const HOUSE_PRICE = ethers.parseEther("0.00001");
 
-            const offer = mockOffers.find(o => o.id === id);
-            if (!offer) throw new Error("Offer not found");
 
             if (offer.type === "Grid") {
                 tx = await contract.buyFromGrid(
-                    Math.floor(offer.amount),
+                    Math.floor(amountToBuy),
                     { value: GRID_PRICE }
                 );
             }
 
             if (offer.type === "Battery") {
                 tx = await contract.buyFromCentral(
-                    Math.floor(offer.amount),
+                    Math.floor(amountToBuy),
                     { value: CENTRAL_PRICE }
                 );
             }
@@ -134,18 +163,27 @@ const Trading: React.FC = () => {
 
                 tx = await contract.buyFromBuilding(
                     sellerAddress,
-                    Math.floor(offer.amount),
+                    Math.floor(amountToBuy),
                     { value: HOUSE_PRICE }
                 );
             }
 
             await tx.wait();
 
+            // UPDATE STATE ON SUCCESS
+            setRequiredEnergy(prev => prev - amountToBuy);
+            setOffers(prev => prev.map(o => {
+                if (o.id === id) {
+                    return { ...o, amount: o.amount - amountToBuy };
+                }
+                return o;
+            }));
+
             setOfferStatus(prev => ({ ...prev, [id]: 'completed' }));
 
         } catch (error) {
             console.error(error);
-            alert("Transaction failed");
+            alert("Transaction failed/cancelled");
             setOfferStatus(prev => ({ ...prev, [id]: 'idle' }));
         }
     };
@@ -167,24 +205,34 @@ const Trading: React.FC = () => {
                 </div>
             </div>
 
-            {/* 2. B1 DEFICIT BANNER */}
-            <div className="card p-6 border-l-[4px] border-l-[var(--color-negative)] bg-gradient-to-r from-[rgba(248,113,113,0.05)] to-transparent">
+            {/* 2. B1 STATUS BANNER (Dynamic) */}
+            <div className={`card p-6 border-l-[4px] bg-gradient-to-r ${requiredEnergy > 0 ? 'border-l-[var(--color-negative)] from-[rgba(248,113,113,0.05)]' : 'border-l-[var(--color-positive)] from-[rgba(52,211,153,0.05)]'} to-transparent transition-colors duration-500`}>
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-[rgba(248,113,113,0.15)] flex items-center justify-center text-[var(--color-negative)]">
+                        <div className={`w-12 h-12 rounded-full flex items-center justify-center ${requiredEnergy > 0 ? 'bg-[rgba(248,113,113,0.15)] text-[var(--color-negative)]' : 'bg-[rgba(52,211,153,0.15)] text-[var(--color-positive)]'}`}>
                             <Building2 size={24} />
                         </div>
                         <div>
                             <h2 className="text-lg font-bold text-white">Buying For: Building 1</h2>
-                            <p className="text-sm text-[var(--color-text-muted)]">Current Status: <span className="text-[var(--color-negative)] font-semibold">DEFICIT</span></p>
+                            <p className="text-sm text-[var(--color-text-muted)]">
+                                Current Status: <span className="font-semibold" style={{ color: statusColor }}>{currentStatus.toUpperCase()}</span>
+                            </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-6">
                         <div className="text-right">
-                            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">Required Energy</p>
-                            <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>4.5 <span className="text-sm font-normal text-[var(--color-text-dim)]">kWh</span></p>
+                            <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider">
+                                {requiredEnergy > 0 ? 'Required Energy' : 'Excess Energy'}
+                            </p>
+                            <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>
+                                {displayedEnergy.toFixed(1)} <span className="text-sm font-normal text-[var(--color-text-dim)]">kWh</span>
+                            </p>
                         </div>
-                        <AlertCircle size={24} className="text-[var(--color-negative)] animate-pulse" />
+                        {requiredEnergy > 0 ? (
+                            <AlertCircle size={24} className="text-[var(--color-negative)] animate-pulse" />
+                        ) : (
+                            <CheckCircle2 size={24} className="text-[var(--color-positive)]" />
+                        )}
                     </div>
                 </div>
             </div>
@@ -246,7 +294,7 @@ const Trading: React.FC = () => {
                 <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                     <div>
                         <h3 className="text-base font-semibold text-white">Available Markets (Buy Energy)</h3>
-                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Select a source to fulfill your 4.5 kWh deficit</p>
+                        <p className="text-xs text-[var(--color-text-muted)] mt-0.5">Select a source to fulfill your {Math.max(0, requiredEnergy).toFixed(1)} kWh deficit</p>
                     </div>
                 </div>
                 <div className="overflow-x-auto">
@@ -262,7 +310,7 @@ const Trading: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {mockOffers.map((offer) => {
+                            {offers.map((offer) => {
                                 const status = offerStatus[offer.id] || 'idle';
                                 const isProcessing = status === 'processing';
                                 const isCompleted = status === 'completed';
@@ -300,7 +348,7 @@ const Trading: React.FC = () => {
                                         {/* AVAILABLE */}
                                         <td style={{ textAlign: 'center' }}>
                                             <span className="text-white font-semibold" style={{ fontFamily: 'var(--font-mono)' }}>
-                                                {offer.amount} <span className="text-[var(--color-text-dim)] font-normal text-xs">kWh</span>
+                                                {offer.amount.toFixed(1)} <span className="text-[var(--color-text-dim)] font-normal text-xs">kWh</span>
                                             </span>
                                         </td>
 
@@ -330,13 +378,14 @@ const Trading: React.FC = () => {
                                         <td style={{ textAlign: 'center' }}>
                                             <button
                                                 onClick={() => handleBuy(offer.id, offer.source)}
-                                                disabled={status !== 'idle'}
+                                                disabled={status !== 'idle' || offer.amount <= 0 || (requiredEnergy <= 0 && offer.amount > 0)}
                                                 className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-200 
                                                     ${isCompleted ? 'bg-transparent text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-default opacity-50' :
                                                         isProcessing ? 'bg-[var(--color-card)] border border-[var(--color-accent)] text-[var(--color-accent)] cursor-wait opacity-80' :
-                                                            'bg-[var(--color-accent)] text-black hover:bg-[#33e0ff] active:scale-95'}`}
+                                                            (offer.amount <= 0 || requiredEnergy <= 0) ? 'bg-transparent text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-not-allowed opacity-30' :
+                                                                'bg-[var(--color-accent)] text-black hover:bg-[#33e0ff] active:scale-95'}`}
                                             >
-                                                {isCompleted ? 'Purchased' : 'Buy Energy'}
+                                                {isCompleted ? 'Purchased' : (offer.amount <= 0 ? 'Sold Out' : 'Buy Energy')}
                                             </button>
                                         </td>
                                     </tr>
