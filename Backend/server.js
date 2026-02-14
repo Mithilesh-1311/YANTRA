@@ -24,12 +24,7 @@ app.get('/api/health', (req, res) => {
 app.use(express.static(path.join(__dirname, '../Frontend/dist')));
 
 // Handle SPA routing - return index.html for any unknown route NOT starting with /api
-app.get(/.*/, (req, res) => {
-    if (req.path.startsWith('/api')) {
-        return res.status(404).json({ error: 'API route not found' });
-    }
-    res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
-});
+// (Moved catch-all route to bottom)
 
 // Middleware
 app.use(cors({
@@ -487,4 +482,13 @@ app.listen(PORT, () => {
     console.log(`[SERVER] Running on http://localhost:${PORT}`);
     console.log(`[SERVER] Supabase: ${process.env.SUPABASE_URL ? 'Connected' : 'NOT configured'}`);
     console.log(`[SERVER] Live data: waiting for Python generator to connect...`);
+});
+
+// Handle SPA routing - return index.html for any unknown route NOT starting with /api
+// (Must be the LAST route to avoid blocking API calls)
+app.get(/.*/, (req, res) => {
+    if (req.path.startsWith('/api')) {
+        return res.status(404).json({ error: 'API route not found' });
+    }
+    res.sendFile(path.join(__dirname, '../Frontend/dist/index.html'));
 });
