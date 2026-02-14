@@ -17,7 +17,7 @@ SPIKE: appliance event (AC, washing machine, etc.)
 import math, random, time, requests, threading, csv, os
 
 
-SERVER_URL = "http://localhost:5000/update"
+SERVER_URL = "https://yantra-jajt.onrender.com/update"
 DATA_DIR   = "data"   # each building writes its own CSV here
 
 # Solar panel efficiency factor (accounts for panel losses, inverter, heat, angle)
@@ -175,7 +175,8 @@ def run_building(building_id, profile):
                 print(f"  [{building_id}] Server not reachable: {e}")
 
             sim_minute += 1
-            time.sleep(0.15)
+            # Reduced sleep to compensate for network latency (Local: ~0.15s, Remote: ~300ms latency + sleep)
+            time.sleep(0.01) 
     except Exception as e:
         print(f"\n❌ [{building_id}] THREAD CRASHED: {e}\n")
         import traceback

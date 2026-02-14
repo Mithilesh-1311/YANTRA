@@ -55,6 +55,7 @@ const DashboardOverview: React.FC = () => {
                 setStates(generateBuildingStates(next));
                 setPredictions(generatePredictions());
                 setCentralBat(generateCentralBattery());
+                setSimHour((next % 1440) / 60); // Fix: Update hour in fallback
                 return next;
             });
         }
