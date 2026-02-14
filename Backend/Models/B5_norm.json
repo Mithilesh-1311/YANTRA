@@ -1,0 +1,22 @@
+{
+  "solar_output_kw": {
+    "min": 0.0,
+    "max": 0.2091829925775528
+  },
+  "consumption_kw": {
+    "min": 0.011900000274181366,
+    "max": 0.17260000109672546
+  },
+  "battery_level_kwh": {
+    "min": 0.0,
+    "max": 18.0
+  },
+  "time_sin": {
+    "min": -1.0,
+    "max": 1.0
+  },
+  "time_cos": {
+    "min": -1.0,
+    "max": 1.0
+  }
+}
