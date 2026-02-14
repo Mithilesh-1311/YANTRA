@@ -17,7 +17,11 @@ SPIKE: appliance event (AC, washing machine, etc.)
 import math, random, time, requests, threading, csv, os
 
 
-SERVER_URL = "https://yantra-jajt.onrender.com/update"
+# List of servers to update simultaneously (Prod + Local)
+SERVER_URLS = [
+    "https://yantra-jajt.onrender.com/update",
+    "http://127.0.0.1:5000/update"
+]
 DATA_DIR   = "data"   # each building writes its own CSV here
 
 # Solar panel efficiency factor (accounts for panel losses, inverter, heat, angle)
@@ -169,10 +173,12 @@ def run_building(building_id, profile):
                 "spike_mins_left":   spike_minutes_left,
             }
 
-            try:
-                requests.post(SERVER_URL, json=payload, timeout=1)
-            except Exception as e:
-                print(f"  [{building_id}] Server not reachable: {e}")
+            # Broadcast to all configured servers
+            for url in SERVER_URLS:
+                try:
+                    requests.post(url, json=payload, timeout=1)
+                except Exception as e:
+                    print(f"  [{building_id}] Failed to send to {url}: {e}")
 
             sim_minute += 1
             # Reduced sleep to compensate for network latency (Local: ~0.15s, Remote: ~300ms latency + sleep)
