@@ -4,8 +4,52 @@ import {
     Battery, Activity, CheckCircle2, AlertCircle,
     Loader2, Zap, Building2
 } from 'lucide-react';
+import { ethers } from "ethers";
 
-// --- NEW INTERFACES & DATA ---
+/* ========================= */
+/* CONTRACT CONFIG */
+/* ========================= */
+
+const CONTRACT_ADDRESS = "0xf3bab00B2cEF39f27838F1dDec3CA52db13Ee9eA";
+
+const CONTRACT_ABI = [
+    {
+        "inputs": [
+            { "internalType": "address", "name": "_seller", "type": "address" },
+            { "internalType": "uint256", "name": "_energy", "type": "uint256" }
+        ],
+        "name": "buyFromBuilding",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [{ "internalType": "uint256", "name": "_energy", "type": "uint256" }],
+        "name": "buyFromCentral",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    },
+    {
+        "inputs": [{ "internalType": "uint256", "name": "_energy", "type": "uint256" }],
+        "name": "buyFromGrid",
+        "outputs": [],
+        "stateMutability": "payable",
+        "type": "function"
+    }
+];
+
+/* ========================= */
+/* HARDCODED SELLER ADDRESSES */
+/* ========================= */
+
+const buildingAddresses: Record<string, string> = {
+    "Building 2": "0x1111111111111111111111111111111111111111",
+    "Building 3": "0x2222222222222222222222222222222222222222",
+    "Building 4": "0x3333333333333333333333333333333333333333",
+    "Building 5": "0x4444444444444444444444444444444444444444",
+};
+
 interface EnergyOffer {
     id: string;
     source: string;
@@ -24,27 +68,87 @@ const mockOffers: EnergyOffer[] = [
 ];
 
 const Trading: React.FC = () => {
-    // --- STATE ---
-    const [offerStatus, setOfferStatus] = useState<Record<string, 'idle' | 'processing' | 'completed'>>({});
 
-    // --- OLD LOGIC ---
+    const [offerStatus, setOfferStatus] =
+        useState<Record<string, 'idle' | 'processing' | 'completed'>>({});
+
     const buyers = buildingStats.filter(b => b.status === 'Deficit').length;
     const sellers = buildingStats.filter(b => b.status === 'Surplus').length;
     const centralBattery = 85;
     const gridStability = 76;
 
-    // --- NEW LOGIC ---
-    const handleBuy = (id: string, sourceName: string) => {
-        console.log(`[MetaMask] Requesting transfer from ${sourceName}...`);
-        setOfferStatus(prev => ({ ...prev, [id]: 'processing' }));
+    const stabilityColor =
+        gridStability >= 70 ? 'var(--color-positive)' :
+            gridStability >= 40 ? 'var(--color-warning)' :
+                'var(--color-negative)';
 
-        setTimeout(() => {
-            console.log(`[Blockchain] Confirmed.`);
+    /* ========================= */
+    /* METAMASK INTEGRATION      */
+    /* ========================= */
+
+    const handleBuy = async (id: string, sourceName: string) => {
+        try {
+            if (!(window as any).ethereum) {
+                alert("MetaMask not detected");
+                return;
+            }
+
+            setOfferStatus(prev => ({ ...prev, [id]: 'processing' }));
+
+            const provider = new ethers.BrowserProvider((window as any).ethereum);
+            const signer = await provider.getSigner();
+
+            const contract = new ethers.Contract(
+                CONTRACT_ADDRESS,
+                CONTRACT_ABI,
+                signer
+            );
+
+            let tx;
+
+            // VERY SMALL ETH VALUES FOR SAFE DEMO
+            const GRID_PRICE = ethers.parseEther("0.00002");
+            const CENTRAL_PRICE = ethers.parseEther("0.000015");
+            const HOUSE_PRICE = ethers.parseEther("0.00001");
+
+            const offer = mockOffers.find(o => o.id === id);
+            if (!offer) throw new Error("Offer not found");
+
+            if (offer.type === "Grid") {
+                tx = await contract.buyFromGrid(
+                    Math.floor(offer.amount),
+                    { value: GRID_PRICE }
+                );
+            }
+
+            if (offer.type === "Battery") {
+                tx = await contract.buyFromCentral(
+                    Math.floor(offer.amount),
+                    { value: CENTRAL_PRICE }
+                );
+            }
+
+            if (offer.type === "P2P") {
+                const sellerAddress = buildingAddresses[sourceName];
+                if (!sellerAddress) throw new Error("Seller address missing");
+
+                tx = await contract.buyFromBuilding(
+                    sellerAddress,
+                    Math.floor(offer.amount),
+                    { value: HOUSE_PRICE }
+                );
+            }
+
+            await tx.wait();
+
             setOfferStatus(prev => ({ ...prev, [id]: 'completed' }));
-        }, 2500);
-    };
 
-    const stabilityColor = gridStability >= 70 ? 'var(--color-positive)' : gridStability >= 40 ? 'var(--color-warning)' : 'var(--color-negative)';
+        } catch (error) {
+            console.error(error);
+            alert("Transaction failed");
+            setOfferStatus(prev => ({ ...prev, [id]: 'idle' }));
+        }
+    };
 
     return (
         <div className="space-y-8 animate-enter">
@@ -179,8 +283,8 @@ const Trading: React.FC = () => {
                                                 <div>
                                                     <span className="font-semibold text-white text-sm block">{offer.source}</span>
                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${offer.type === 'Grid' ? 'bg-[rgba(251,191,36,0.1)] text-[var(--color-warning)]' :
-                                                            offer.type === 'Battery' ? 'bg-[rgba(52,211,153,0.1)] text-[var(--color-positive)]' :
-                                                                'bg-[rgba(96,165,250,0.1)] text-[var(--color-info)]'
+                                                        offer.type === 'Battery' ? 'bg-[rgba(52,211,153,0.1)] text-[var(--color-positive)]' :
+                                                            'bg-[rgba(96,165,250,0.1)] text-[var(--color-info)]'
                                                         }`} style={{ fontFamily: 'var(--font-mono)' }}>{offer.type}</span>
                                                 </div>
                                             </div>
