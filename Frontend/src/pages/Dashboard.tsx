@@ -1,30 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { buildingStats, marketPrices } from '../services/mockData';
-import { AreaChart, Area, ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
-import { Activity, Zap, Radio, DollarSign, Sun, Building2, BatteryCharging } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    buildingStats,
+    generateBuildingStates,
+    generatePredictions,
+    generateCentralBattery,
+} from '../services/mockData';
+import type { BuildingSimState, BuildingPrediction } from '../services/mockData';
 
-const COLORS = ['#34d399', '#60a5fa', '#f59e0b', '#f87171', '#a78bfa'];
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { Sun, Building2, BatteryCharging } from 'lucide-react';
+
+const BUILDING_IDS = ['B1', 'B2', 'B3', 'B4', 'B5'];
+const COLORS = ['#00e5ff', '#00ffa3', '#ffd600', '#ff6d00', '#ce93d8'];
 
 const DashboardOverview: React.FC = () => {
-    const [demand, setDemand] = useState(4285);
-    const [generation, setGeneration] = useState(4512);
-    const [frequency, setFrequency] = useState(50.02);
+    const [simMinute, setSimMinute] = useState(42);
+    const [states, setStates] = useState<Record<string, BuildingSimState>>(() => generateBuildingStates(42));
+    const [predictions, setPredictions] = useState<Record<string, BuildingPrediction>>(() => generatePredictions());
+    const [centralBat, setCentralBat] = useState(() => generateCentralBattery());
 
-    useEffect(() => {
-        const id = setInterval(() => {
-            setDemand(prev => prev + Math.round((Math.random() - 0.5) * 20));
-            setGeneration(prev => prev + Math.round((Math.random() - 0.5) * 15));
-            setFrequency(prev => +(prev + (Math.random() - 0.5) * 0.02).toFixed(3));
-        }, 3000);
-        return () => clearInterval(id);
+
+    const refresh = useCallback(() => {
+        setSimMinute(prev => {
+            const next = prev + 1;
+            setStates(generateBuildingStates(next));
+            setPredictions(generatePredictions());
+            setCentralBat(generateCentralBattery());
+
+            return next;
+        });
     }, []);
 
-    const sparkData = Array.from({ length: 20 }, (_, i) => ({ val: 40 + Math.sin(i / 2) * 10 + Math.random() * 8 }));
+    useEffect(() => {
+        const id = setInterval(refresh, 3000);
+        return () => clearInterval(id);
+    }, [refresh]);
 
+    const cbPct = ((centralBat.kwh / centralBat.capacity) * 100).toFixed(1);
 
+    // Pie chart data for Solar & Load (kept from original dashboard)
     const solarPieData = buildingStats.map(b => ({ name: b.name, value: b.solar }));
     const loadPieData = buildingStats.map(b => ({ name: b.name, value: b.load }));
-
     const totalSolar = buildingStats.reduce((s, b) => s + b.solar, 0);
     const totalLoad = buildingStats.reduce((s, b) => s + b.load, 0);
     const avgBattery = Math.round(buildingStats.reduce((s, b) => s + b.battery, 0) / buildingStats.length);
@@ -42,9 +58,22 @@ const DashboardOverview: React.FC = () => {
         );
     };
 
+    // Battery bar color helper
+    const batBarColor = (pct: number) =>
+        pct < 20
+            ? 'linear-gradient(90deg, #ff3366, #ff6d00)'
+            : pct < 50
+                ? 'linear-gradient(90deg, #ffd600, #00ffa3)'
+                : 'linear-gradient(90deg, #00e5ff, #00ffa3)';
+
+    const batBarGlow = (pct: number) =>
+        pct < 20 ? '0 0 8px rgba(255,51,102,0.5)' : '0 0 8px rgba(0,255,163,0.25)';
+
+
+
     return (
         <div className="space-y-6 animate-enter">
-
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-white">Grid Overview</h1>
@@ -52,89 +81,215 @@ const DashboardOverview: React.FC = () => {
                         LAST UPDATE: {new Date().toLocaleTimeString('en-US', { hour12: false })} UTC
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <span className="status-dot status-dot-positive status-dot-live" />
-                    <span className="text-xs font-semibold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>SYSTEM ONLINE</span>
-                </div>
-            </div>
-
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-5">
-
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Current Demand</span>
-                        <Activity size={16} className="text-[var(--color-accent)]" />
-                    </div>
-                    <p className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>
-                        {demand.toLocaleString()} <span className="text-xs font-normal text-[var(--color-text-dim)]">kW</span>
-                    </p>
-                    <div className="h-10 mt-3">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={sparkData}>
-                                <Area type="monotone" dataKey="val" stroke="var(--color-accent)" fill="none" strokeWidth={1.5} dot={false} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Current Generation</span>
-                        <Zap size={16} className="text-[var(--color-positive)]" />
-                    </div>
-                    <p className="text-3xl font-bold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>
-                        {generation.toLocaleString()} <span className="text-xs font-normal text-[var(--color-text-dim)]">kW</span>
-                    </p>
-                    <div className="h-10 mt-3">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <AreaChart data={sparkData}>
-                                <Area type="monotone" dataKey="val" stroke="var(--color-positive)" fill="none" strokeWidth={1.5} dot={false} />
-                            </AreaChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-
-
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">Grid Frequency</span>
-                        <Radio size={16} className="text-[var(--color-accent)]" />
-                    </div>
-                    <div className="flex items-end gap-2">
-                        <p className="text-3xl font-bold text-[var(--color-accent)]" style={{ fontFamily: 'var(--font-mono)' }}>
-                            {frequency.toFixed(2)}
-                        </p>
-                        <span className="text-xs text-[var(--color-text-dim)] mb-1">Hz</span>
-                    </div>
-                    <div className="flex items-center gap-1.5 mt-3">
-                        <span className="status-dot status-dot-positive" />
-                        <span className="text-xs text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>NOMINAL</span>
-                    </div>
-                </div>
-
-
-                <div className="card p-6">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider">P2P Market Price</span>
-                        <DollarSign size={16} className="text-[var(--color-warning)]" />
-                    </div>
-                    <p className="text-3xl font-bold text-[var(--color-warning)]" style={{ fontFamily: 'var(--font-mono)' }}>
-                        ${marketPrices.p2pAverage}
-                    </p>
-                    <div className="flex items-center gap-3 mt-3 text-xs" style={{ fontFamily: 'var(--font-mono)' }}>
-                        <span className="text-[var(--color-text-dim)]">Grid: ${marketPrices.gridBuy}</span>
-                        <span className="text-[var(--color-negative)]">
-                            +{((marketPrices.gridBuy - marketPrices.p2pAverage) / marketPrices.p2pAverage * 100).toFixed(0)}%
-                        </span>
+                <div className="flex items-center gap-4">
+                    <span className="text-xs text-[var(--color-text-dim)]" style={{ fontFamily: 'var(--font-mono)' }}>
+                        SIM-MIN: {simMinute}
+                    </span>
+                    <div className="flex items-center gap-2">
+                        <span className="status-dot status-dot-positive status-dot-live" />
+                        <span className="text-xs font-semibold text-[var(--color-positive)]" style={{ fontFamily: 'var(--font-mono)' }}>SYSTEM ONLINE</span>
                     </div>
                 </div>
             </div>
 
+            {/* ── Central Battery Panel ── */}
+            <div
+                className="card"
+                style={{
+                    padding: '16px 24px',
+                    borderColor: '#a78bfa44',
+                    boxShadow: '0 0 30px rgba(124,77,255,0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '32px',
+                    flexWrap: 'wrap',
+                }}
+            >
+                <div style={{ whiteSpace: 'nowrap' }}>
+                    <p className="text-[10px] tracking-widest uppercase" style={{ color: '#a78bfa', fontFamily: 'var(--font-mono)' }}>Central Server Battery</p>
+                    <p className="text-2xl font-bold text-white" style={{ fontFamily: 'var(--font-mono)' }}>
+                        {centralBat.kwh.toFixed(1)} <span className="text-xs font-normal text-[var(--color-text-dim)]">/ {centralBat.capacity} kWh</span>
+                    </p>
+                </div>
+                <div style={{ flex: 1, minWidth: 200 }}>
+                    <div className="flex justify-between text-[9px] text-[var(--color-text-dim)] mb-1" style={{ fontFamily: 'var(--font-mono)' }}>
+                        <span>CHARGE LEVEL</span><span>{cbPct}%</span>
+                    </div>
+                    <div style={{ background: 'var(--color-bg)', borderRadius: 6, height: 14, border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+                        <div style={{
+                            height: '100%', borderRadius: 6,
+                            width: `${cbPct}%`,
+                            background: 'linear-gradient(90deg, #7c4dff, #b388ff)',
+                            boxShadow: '0 0 12px rgba(124,77,255,0.5)',
+                            transition: 'width 0.8s ease',
+                        }} />
+                    </div>
+                </div>
+                <div className="flex gap-5" style={{ fontFamily: 'var(--font-mono)' }}>
+                    {[
+                        { label: 'P2P', val: centralBat.p2p_count, color: 'var(--color-accent)' },
+                        { label: 'CENTRAL', val: centralBat.central_count, color: '#a78bfa' },
+                        { label: 'GRID', val: centralBat.grid_count, color: '#ff6d00' },
+                    ].map(s => (
+                        <div key={s.label} className="text-center">
+                            <span className="block text-base font-bold" style={{ color: s.color }}>{s.val}</span>
+                            <span className="text-[9px] tracking-wider text-[var(--color-text-dim)]">{s.label}</span>
+                        </div>
+                    ))}
+                </div>
+            </div>
 
+            {/* ── Building Cards Grid ── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                {BUILDING_IDS.map((bid, i) => {
+                    const s = states[bid];
+                    const p = predictions[bid];
+                    if (!s) return null;
+                    const batPct = (s.battery_kwh / s.battery_cap) * 100;
+
+                    return (
+                        <div
+                            key={bid}
+                            className="card"
+                            style={{
+                                padding: '14px',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                borderColor: s.is_deficit ? 'rgba(255,51,102,0.25)' : 'rgba(0,255,163,0.25)',
+                                boxShadow: s.is_deficit
+                                    ? '0 0 20px rgba(255,51,102,0.15)'
+                                    : '0 0 20px rgba(0,255,163,0.12)',
+                                transition: 'border-color 0.4s, box-shadow 0.4s',
+                            }}
+                        >
+                            {/* Accent top bar */}
+                            <div style={{
+                                position: 'absolute', top: 0, left: 0, right: 0, height: 2,
+                                background: s.is_deficit
+                                    ? 'linear-gradient(90deg, transparent, #ff3366, transparent)'
+                                    : 'linear-gradient(90deg, transparent, #00ffa3, transparent)',
+                            }} />
+
+                            {/* Header row */}
+                            <div className="flex justify-between items-start mb-2">
+                                <div>
+                                    <p className="text-xl font-bold" style={{ color: COLORS[i], letterSpacing: '2px' }}>{bid}</p>
+                                    <p className="text-[9px] uppercase tracking-widest text-[var(--color-text-dim)]">{s.type}</p>
+                                </div>
+                                <span
+                                    className="text-[9px] font-bold tracking-widest uppercase px-2 py-0.5 rounded"
+                                    style={{
+                                        background: s.is_deficit ? 'rgba(255,51,102,0.15)' : 'rgba(0,255,163,0.15)',
+                                        color: s.is_deficit ? '#ff3366' : '#00ffa3',
+                                        border: `1px solid ${s.is_deficit ? 'rgba(255,51,102,0.3)' : 'rgba(0,255,163,0.3)'}`,
+                                        fontFamily: 'var(--font-mono)',
+                                        animation: s.is_deficit ? 'pulse-dot 1.5s infinite' : undefined,
+                                    }}
+                                >
+                                    {s.is_deficit ? '▼ DEFICIT' : '▲ SURPLUS'}
+                                </span>
+                            </div>
+
+                            {/* House icon */}
+                            <div className="text-center text-3xl my-2" style={{
+                                filter: `drop-shadow(0 0 8px ${s.is_deficit ? '#ff3366' : '#00ffa3'})`,
+                                color: s.is_deficit ? '#ff3366' : '#00ffa3',
+                                transition: 'color 0.4s',
+                            }}>🏠</div>
+
+                            {/* Metrics */}
+                            <div className="space-y-1 mb-2">
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-[var(--color-text-dim)]">☀ SOLAR</span>
+                                    <span className="font-bold" style={{ fontFamily: 'var(--font-mono)', color: '#ffd600' }}>
+                                        {s.solar_kw.toFixed(3)} kW
+                                    </span>
+                                </div>
+                                <div className="flex justify-between items-center text-[10px]">
+                                    <span className="text-[var(--color-text-dim)]">🔌 CONSUMPTION</span>
+                                    <span className="font-bold" style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-text)' }}>
+                                        {s.total_drained_kwh.toFixed(4)} kWh
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Battery bar */}
+                            <div className="mb-2">
+                                <div className="flex justify-between text-[9px] text-[var(--color-text-dim)] mb-1" style={{ fontFamily: 'var(--font-mono)' }}>
+                                    <span>🔋 BATTERY</span>
+                                    <span>{s.battery_kwh.toFixed(2)}/{s.battery_cap} kWh</span>
+                                </div>
+                                <div style={{ background: 'var(--color-bg)', borderRadius: 4, height: 8, border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+                                    <div style={{
+                                        height: '100%', borderRadius: 4,
+                                        width: `${batPct.toFixed(1)}%`,
+                                        background: batBarColor(batPct),
+                                        boxShadow: batBarGlow(batPct),
+                                        transition: 'width 0.6s ease, background 0.4s',
+                                    }} />
+                                </div>
+                            </div>
+
+                            {/* Spike indicator */}
+                            {s.spike_active && (
+                                <div style={{
+                                    background: 'rgba(255,171,0,0.12)', border: '1px solid rgba(255,171,0,0.3)',
+                                    borderRadius: 4, padding: '3px 6px', fontSize: 9, color: '#ffab00', marginBottom: 6,
+                                }}>⚡ APPLIANCE SPIKE ACTIVE</div>
+                            )}
+
+                            {/* Predictions */}
+                            {p && (
+                                <div style={{ borderTop: '1px solid var(--color-border)', paddingTop: 8, marginTop: 4 }}>
+                                    <div className="flex justify-between text-[9px] mb-1">
+                                        <span className="text-[var(--color-text-dim)]">🤖 PRED NET</span>
+                                        <span className="font-bold" style={{
+                                            fontFamily: 'var(--font-mono)', fontSize: 10,
+                                            color: p.predicted_net_kwh >= 0 ? '#00ffa3' : '#ff3366',
+                                        }}>
+                                            {p.predicted_net_kwh >= 0 ? '+' : ''}{p.predicted_net_kwh.toFixed(3)} kWh
+                                        </span>
+                                    </div>
+                                    <div className="flex justify-between text-[9px] mb-1">
+                                        <span className="text-[var(--color-text-dim)]">⚠ DEFICIT PROB</span>
+                                        <span className="font-bold" style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--color-text)' }}>
+                                            {(p.deficit_probability * 100).toFixed(1)}%
+                                        </span>
+                                    </div>
+                                    <div style={{ background: 'var(--color-bg)', borderRadius: 3, height: 4, margin: '2px 0' }}>
+                                        <div style={{
+                                            height: '100%', borderRadius: 3, width: `${(p.deficit_probability * 100).toFixed(1)}%`,
+                                            background: 'linear-gradient(90deg, #00ffa3, #ff3366)',
+                                            transition: 'width 0.6s',
+                                        }} />
+                                    </div>
+                                    <div className="mt-1.5 flex items-center gap-1 text-[9px]">
+                                        <span className="text-[var(--color-text-dim)]">⏱ BUFFER</span>
+                                        <span
+                                            className="px-1.5 py-0.5 rounded text-[9px] font-bold"
+                                            style={{
+                                                fontFamily: 'var(--font-mono)',
+                                                ...(p.buffer_minutes <= 30
+                                                    ? { background: 'rgba(0,255,163,0.15)', color: '#00ffa3', border: '1px solid rgba(0,255,163,0.25)' }
+                                                    : p.buffer_minutes >= 120
+                                                        ? { background: 'rgba(255,51,102,0.15)', color: '#ff3366', border: '1px solid rgba(255,51,102,0.25)' }
+                                                        : { background: 'rgba(255,214,0,0.15)', color: '#ffd600', border: '1px solid rgba(255,214,0,0.25)' }
+                                                ),
+                                            }}
+                                        >
+                                            {p.buffer_minutes} MIN
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+            </div>
+
+
+            {/* ── Original pie charts & table section ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <Sun size={15} className="text-[var(--color-warning)]" />
@@ -165,7 +320,6 @@ const DashboardOverview: React.FC = () => {
                         </div>
                     </div>
                 </div>
-
 
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
@@ -198,7 +352,6 @@ const DashboardOverview: React.FC = () => {
                     </div>
                 </div>
 
-
                 <div className="card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center gap-2">
                         <BatteryCharging size={15} className="text-[var(--color-positive)]" />
@@ -224,7 +377,7 @@ const DashboardOverview: React.FC = () => {
                 </div>
             </div>
 
-
+            {/* ── Building Energy Table & System Health ── */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                 <div className="lg:col-span-2 card overflow-hidden">
                     <div className="px-6 py-4 border-b border-[var(--color-border)]">
@@ -269,7 +422,6 @@ const DashboardOverview: React.FC = () => {
                         </table>
                     </div>
                 </div>
-
 
                 <div className="card p-6">
                     <h3 className="text-base font-semibold text-white mb-5">System Health</h3>
