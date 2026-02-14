@@ -73,6 +73,11 @@ const Trading: React.FC = () => {
     const [offerStatus, setOfferStatus] = useState<Record<string, 'idle' | 'processing' | 'completed'>>({});
     const [requiredEnergy, setRequiredEnergy] = useState<number>(4.5); // Initial deficit
 
+    // --- MODAL STATE ---
+    const [showModal, setShowModal] = useState(false);
+    const [selectedOffer, setSelectedOffer] = useState<EnergyOffer | null>(null);
+    const [buyAmount, setBuyAmount] = useState<string>('');
+
     // --- DERIVED STATE ---
     const currentStatus = requiredEnergy > 0 ? 'Deficit' : 'Surplus';
     const displayedEnergy = Math.abs(requiredEnergy);
@@ -83,103 +88,89 @@ const Trading: React.FC = () => {
     const sellers = buildingStats.filter(b => b.status === 'Surplus').length;
     const centralBattery = 85;
     const gridStability = 76;
+    const stabilityColor = gridStability >= 70 ? 'var(--color-positive)' : gridStability >= 40 ? 'var(--color-warning)' : 'var(--color-negative)';
 
-    const stabilityColor =
-        gridStability >= 70 ? 'var(--color-positive)' :
-            gridStability >= 40 ? 'var(--color-warning)' :
-                'var(--color-negative)';
+    // --- HANDLERS ---
+    const handleBuyClick = (offer: EnergyOffer) => {
+        setSelectedOffer(offer);
+        setBuyAmount('');
+        setShowModal(true);
+    };
 
-    /* ========================= */
-    /* METAMASK INTEGRATION      */
-    /* ========================= */
+    const handleConfirmBuy = async () => {
+        if (!selectedOffer) return;
 
-    const handleBuy = async (id: string, sourceName: string) => {
+        const amount = Number(buyAmount);
+
+        // Validation
+        if (!amount || amount <= 0) {
+            alert("Please enter a valid amount");
+            return;
+        }
+        if (amount > selectedOffer.amount) {
+            alert("Invalid input: Exceeds available amount");
+            setShowModal(false);
+            return;
+        }
+
+        // Close modal and start transaction
+        setShowModal(false);
+        await executeTransaction(selectedOffer, amount);
+    };
+
+    const executeTransaction = async (offer: EnergyOffer, amountToBuy: number) => {
+        const id = offer.id;
         try {
             if (!(window as any).ethereum) {
-                alert("MetaMask not detected.Kindly download the required extensions and log in to your MetaMask Account.");
+                alert("MetaMask not detected. Kindly download the required extensions and log in.");
                 return;
             }
-
-            // check if we even need energy
-            if (requiredEnergy <= 0) {
-                alert("Energy requirement already met!");
-                return;
-            }
-
-            const offer = offers.find(o => o.id === id);
-            if (!offer) throw new Error("Offer not found");
-
-            // Calculate Amount to Buy
-            // If Grid/Battery: limited by our need.
-            // If P2P: Atomic (buy whole package), OR limited by need?
-            // Adopting strategy:
-            // - Grid/Battery: flexible, buy only what we need.
-            // - P2P: fixed package, buy the whole thing (can flip us to surplus).
-            let amountToBuy = 0;
-            if (offer.type === 'Grid' || offer.type === 'Battery') {
-                amountToBuy = Math.min(offer.amount, requiredEnergy);
-            } else {
-                amountToBuy = offer.amount;
-            }
-
-            if (amountToBuy <= 0) return;
 
             setOfferStatus(prev => ({ ...prev, [id]: 'processing' }));
 
             const provider = new ethers.BrowserProvider((window as any).ethereum);
             const signer = await provider.getSigner();
-
-            const contract = new ethers.Contract(
-                CONTRACT_ADDRESS,
-                CONTRACT_ABI,
-                signer
-            );
+            const contract = new ethers.Contract(CONTRACT_ADDRESS, CONTRACT_ABI, signer);
 
             let tx;
-
-            // VERY SMALL ETH VALUES FOR SAFE DEMO
             const GRID_PRICE = ethers.parseEther("0.00002");
             const CENTRAL_PRICE = ethers.parseEther("0.000015");
             const HOUSE_PRICE = ethers.parseEther("0.00001");
 
-
             if (offer.type === "Grid") {
-                tx = await contract.buyFromGrid(
-                    Math.floor(amountToBuy),
-                    { value: GRID_PRICE }
-                );
-            }
-
-            if (offer.type === "Battery") {
-                tx = await contract.buyFromCentral(
-                    Math.floor(amountToBuy),
-                    { value: CENTRAL_PRICE }
-                );
-            }
-
-            if (offer.type === "P2P") {
-                const sellerAddress = buildingAddresses[sourceName];
+                tx = await contract.buyFromGrid(Math.floor(amountToBuy), { value: GRID_PRICE });
+            } else if (offer.type === "Battery") {
+                tx = await contract.buyFromCentral(Math.floor(amountToBuy), { value: CENTRAL_PRICE });
+            } else if (offer.type === "P2P") {
+                const sellerAddress = buildingAddresses[offer.source];
                 if (!sellerAddress) throw new Error("Seller address missing");
-
-                tx = await contract.buyFromBuilding(
-                    sellerAddress,
-                    Math.floor(amountToBuy),
-                    { value: HOUSE_PRICE }
-                );
+                tx = await contract.buyFromBuilding(sellerAddress, Math.floor(amountToBuy), { value: HOUSE_PRICE });
             }
 
             await tx.wait();
 
-            // UPDATE STATE ON SUCCESS
+            // Success: Update UI
             setRequiredEnergy(prev => prev - amountToBuy);
-            setOffers(prev => prev.map(o => {
-                if (o.id === id) {
-                    return { ...o, amount: o.amount - amountToBuy };
-                }
-                return o;
-            }));
-
+            setOffers(prev => prev.map(o => o.id === id ? { ...o, amount: o.amount - amountToBuy } : o));
             setOfferStatus(prev => ({ ...prev, [id]: 'completed' }));
+
+            // Save to Backend
+            try {
+                await fetch('http://localhost:5000/api/trades', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        from: offer.source,
+                        to: 'Building 1',
+                        energy: amountToBuy,
+                        price: offer.price,
+                        txHash: tx.hash,
+                        status: 'Completed'
+                    })
+                });
+            } catch (err) {
+                console.error("Failed to save trade:", err);
+            }
 
         } catch (error) {
             console.error(error);
@@ -189,9 +180,8 @@ const Trading: React.FC = () => {
     };
 
     return (
-        <div className="space-y-8 animate-enter">
-
-            {/* 1. HEADER */}
+        <div className="space-y-8 animate-enter relative">
+            {/* Header */}
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-semibold text-white">P2P Energy Transfer Marketplace</h1>
@@ -205,7 +195,7 @@ const Trading: React.FC = () => {
                 </div>
             </div>
 
-            {/* 2. B1 STATUS BANNER (Dynamic) */}
+            {/* B1 Status Banner */}
             <div className={`card p-6 border-l-[4px] bg-gradient-to-r ${requiredEnergy > 0 ? 'border-l-[var(--color-negative)] from-[rgba(248,113,113,0.05)]' : 'border-l-[var(--color-positive)] from-[rgba(52,211,153,0.05)]'} to-transparent transition-colors duration-500`}>
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-4">
@@ -237,9 +227,8 @@ const Trading: React.FC = () => {
                 </div>
             </div>
 
-            {/* 3. STATS GRID */}
+            {/* Stats Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                {/* Buyers Card */}
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Current Buyers</p>
                     <div className="flex items-end justify-between">
@@ -249,7 +238,6 @@ const Trading: React.FC = () => {
                         </span>
                     </div>
                 </div>
-                {/* Sellers Card */}
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Current Sellers</p>
                     <div className="flex items-end justify-between">
@@ -259,7 +247,6 @@ const Trading: React.FC = () => {
                         </span>
                     </div>
                 </div>
-                {/* Battery Card */}
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Central Battery Level</p>
                     <div className="flex items-end justify-between mb-3">
@@ -273,7 +260,6 @@ const Trading: React.FC = () => {
                         <div className="h-full rounded-sm transition-all duration-500" style={{ width: `${centralBattery}%`, background: `linear-gradient(90deg, var(--color-positive), var(--color-accent))` }} />
                     </div>
                 </div>
-                {/* Stability Card */}
                 <div className="card p-5">
                     <p className="text-xs text-[var(--color-text-muted)] uppercase tracking-wider mb-2">Grid Stability Score</p>
                     <div className="flex items-end justify-between mb-3">
@@ -289,7 +275,7 @@ const Trading: React.FC = () => {
                 </div>
             </div>
 
-            {/* 4. AVAILABLE MARKETS (TABLE VIEW) */}
+            {/* Available Markets Table */}
             <div className="card overflow-hidden">
                 <div className="px-6 py-4 border-b border-[var(--color-border)] flex items-center justify-between">
                     <div>
@@ -314,52 +300,34 @@ const Trading: React.FC = () => {
                                 const status = offerStatus[offer.id] || 'idle';
                                 const isProcessing = status === 'processing';
                                 const isCompleted = status === 'completed';
-
                                 return (
                                     <tr key={offer.id}>
-                                        {/* FROM */}
                                         <td>
                                             <div className="flex items-center gap-3">
-                                                <div className={`w-8 h-8 rounded-md flex items-center justify-center 
-                                                    ${offer.type === 'Grid' ? 'bg-[rgba(251,191,36,0.1)] text-[var(--color-warning)]' :
-                                                        offer.type === 'Battery' ? 'bg-[rgba(52,211,153,0.1)] text-[var(--color-positive)]' :
-                                                            'bg-[rgba(96,165,250,0.1)] text-[var(--color-info)]'}`}>
+                                                <div className={`w-8 h-8 rounded-md flex items-center justify-center ${offer.type === 'Grid' ? 'bg-[rgba(251,191,36,0.1)] text-[var(--color-warning)]' : offer.type === 'Battery' ? 'bg-[rgba(52,211,153,0.1)] text-[var(--color-positive)]' : 'bg-[rgba(96,165,250,0.1)] text-[var(--color-info)]'}`}>
                                                     {offer.type === 'Grid' && <Zap size={16} />}
                                                     {offer.type === 'Battery' && <Battery size={16} />}
                                                     {offer.type === 'P2P' && <Building2 size={16} />}
                                                 </div>
                                                 <div>
                                                     <span className="font-semibold text-white text-sm block">{offer.source}</span>
-                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${offer.type === 'Grid' ? 'bg-[rgba(251,191,36,0.1)] text-[var(--color-warning)]' :
-                                                        offer.type === 'Battery' ? 'bg-[rgba(52,211,153,0.1)] text-[var(--color-positive)]' :
-                                                            'bg-[rgba(96,165,250,0.1)] text-[var(--color-info)]'
-                                                        }`} style={{ fontFamily: 'var(--font-mono)' }}>{offer.type}</span>
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${offer.type === 'Grid' ? 'bg-[rgba(251,191,36,0.1)] text-[var(--color-warning)]' : offer.type === 'Battery' ? 'bg-[rgba(52,211,153,0.1)] text-[var(--color-positive)]' : 'bg-[rgba(96,165,250,0.1)] text-[var(--color-info)]'}`} style={{ fontFamily: 'var(--font-mono)' }}>{offer.type}</span>
                                                 </div>
                                             </div>
                                         </td>
-
-                                        {/* TO */}
                                         <td>
-                                            <span className="px-3 py-1 text-xs font-semibold rounded bg-[rgba(248,113,113,0.12)] text-[var(--color-negative)] border border-[rgba(248,113,113,0.2)]" style={{ fontFamily: 'var(--font-mono)' }}>
-                                                Building 1
-                                            </span>
+                                            <span className="px-3 py-1 text-xs font-semibold rounded bg-[rgba(248,113,113,0.12)] text-[var(--color-negative)] border border-[rgba(248,113,113,0.2)]" style={{ fontFamily: 'var(--font-mono)' }}>Building 1</span>
                                         </td>
-
-                                        {/* AVAILABLE */}
                                         <td style={{ textAlign: 'center' }}>
                                             <span className="text-white font-semibold" style={{ fontFamily: 'var(--font-mono)' }}>
                                                 {offer.amount.toFixed(1)} <span className="text-[var(--color-text-dim)] font-normal text-xs">kWh</span>
                                             </span>
                                         </td>
-
-                                        {/* RATE */}
                                         <td style={{ textAlign: 'center' }}>
                                             <span className={`font-bold ${offer.price > 0.25 ? 'text-[var(--color-negative)]' : offer.price > 0.15 ? 'text-[var(--color-warning)]' : 'text-[var(--color-positive)]'}`} style={{ fontFamily: 'var(--font-mono)' }}>
                                                 ${offer.price.toFixed(2)}<span className="text-[var(--color-text-muted)] font-normal text-xs">/kWh</span>
                                             </span>
                                         </td>
-
-                                        {/* STATUS (NEW) */}
                                         <td style={{ textAlign: 'center' }}>
                                             {isProcessing ? (
                                                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-accent)] animate-pulse">
@@ -373,17 +341,11 @@ const Trading: React.FC = () => {
                                                 <span className="text-xs text-[var(--color-text-muted)]">Available</span>
                                             )}
                                         </td>
-
-                                        {/* ACTION */}
                                         <td style={{ textAlign: 'center' }}>
                                             <button
-                                                onClick={() => handleBuy(offer.id, offer.source)}
+                                                onClick={() => handleBuyClick(offer)}
                                                 disabled={status !== 'idle' || offer.amount <= 0 || (requiredEnergy <= 0 && offer.amount > 0)}
-                                                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-200 
-                                                    ${isCompleted ? 'bg-transparent text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-default opacity-50' :
-                                                        isProcessing ? 'bg-[var(--color-card)] border border-[var(--color-accent)] text-[var(--color-accent)] cursor-wait opacity-80' :
-                                                            (offer.amount <= 0 || requiredEnergy <= 0) ? 'bg-transparent text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-not-allowed opacity-30' :
-                                                                'bg-[var(--color-accent)] text-black hover:bg-[#33e0ff] active:scale-95'}`}
+                                                className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-200 ${isCompleted ? 'bg-transparent text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-default opacity-50' : isProcessing ? 'bg-[var(--color-card)] border border-[var(--color-accent)] text-[var(--color-accent)] cursor-wait opacity-80' : (offer.amount <= 0 || requiredEnergy <= 0) ? 'bg-transparent text-[var(--color-text-muted)] border border-[var(--color-border)] cursor-not-allowed opacity-30' : 'bg-[var(--color-accent)] text-black hover:bg-[#33e0ff] active:scale-95'}`}
                                             >
                                                 {isCompleted ? 'Purchased' : (offer.amount <= 0 ? 'Sold Out' : 'Buy Energy')}
                                             </button>
@@ -395,6 +357,58 @@ const Trading: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* BUY MODAL */}
+            {showModal && selectedOffer && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-enter">
+                    <div className="bg-[var(--color-card)] border border-[var(--color-border)] rounded-lg p-6 w-full max-w-md shadow-2xl transform transition-all scale-100">
+                        <div className="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 className="text-lg font-bold text-white">Confirm Purchase</h3>
+                                <p className="text-xs text-[var(--color-text-muted)]">Buying from {selectedOffer.source}</p>
+                            </div>
+                            <button onClick={() => setShowModal(false)} className="text-[var(--color-text-muted)] hover:text-white transition-colors">✕</button>
+                        </div>
+
+                        <div className="space-y-4">
+                            <div className="bg-[var(--color-bg)] p-3 rounded-md border border-[var(--color-border)] flex justify-between items-center">
+                                <span className="text-sm text-[var(--color-text-muted)]">Available Energy</span>
+                                <span className="font-mono font-bold text-[var(--color-accent)]">{selectedOffer.amount.toFixed(1)} kWh</span>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-[var(--color-text-muted)] uppercase tracking-wider mb-1.5">Amount to Buy (kWh)</label>
+                                <input
+                                    type="number"
+                                    value={buyAmount}
+                                    onChange={(e) => setBuyAmount(e.target.value)}
+                                    placeholder={`Max ${selectedOffer.amount}`}
+                                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)] rounded px-3 py-2 text-white placeholder-[var(--color-text-dim)] focus:outline-none focus:border-[var(--color-accent)] transition-colors"
+                                />
+                            </div>
+
+                            <p className="text-xs text-[var(--color-text-muted)] italic">
+                                * Transaction will be processed via MetaMask. Gas fees apply.
+                            </p>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 py-2 text-sm font-semibold text-[var(--color-text-muted)] bg-[var(--color-surface)] border border-[var(--color-border)] rounded hover:bg-[var(--color-border)] transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={handleConfirmBuy}
+                                    className="flex-1 py-2 text-sm font-bold text-black bg-[var(--color-accent)] rounded hover:bg-[#33e0ff] transition-colors shadow-[0_0_15px_rgba(0,229,255,0.3)]"
+                                >
+                                    Confirm Buy
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

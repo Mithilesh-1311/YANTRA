@@ -1,4 +1,4 @@
- import express from 'express';
+import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
@@ -69,6 +69,51 @@ const transactions = [
 
 app.get('/api/transactions', (_req, res) => {
     res.json(transactions);
+});
+
+// Store new trade
+app.post('/api/trades', async (req, res) => {
+    try {
+        const { from, to, energy, price, txHash, status } = req.body;
+
+        const newTrade = {
+            id: transactions.length + 1,
+            from,
+            to,
+            energy,
+            price,
+            status: status || 'Completed',
+            time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
+            txHash
+        };
+
+        // 1. Add to in-memory store for immediate UI update
+        transactions.unshift(newTrade);
+        if (transactions.length > 20) transactions.pop(); // Keep list size manageable
+
+        // 2. Persist to Supabase (best-effort)
+        try {
+            const { error } = await supabase
+                .from('transactions')
+                .insert([{
+                    from_entity: from,
+                    to_entity: to,
+                    energy_amount: energy,
+                    price_per_unit: price,
+                    tx_hash: txHash,
+                    status: status || 'Completed'
+                }]);
+
+            if (error) console.warn('Supabase insert failed:', error.message);
+        } catch (err) {
+            console.warn('Supabase error:', err.message);
+        }
+
+        res.status(201).json({ success: true, trade: newTrade });
+    } catch (error) {
+        console.error('Error saving trade:', error);
+        res.status(500).json({ success: false, error: 'Failed to save trade' });
+    }
 });
 
 // ─── Market prices ─────────────────────────────────────────────
