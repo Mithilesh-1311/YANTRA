@@ -147,7 +147,7 @@ const DashboardOverview: React.FC = () => {
                                     <Pie data={solarPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" labelLine={false} label={renderCustomLabel} stroke="none">
                                         {solarPieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                     </Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }} formatter={(val) => [`${val} kW`, 'Solar']} />
+                                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'white' }} itemStyle={{ color: 'white' }} formatter={(val) => [`${val} kW`, 'Solar']} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
@@ -179,7 +179,7 @@ const DashboardOverview: React.FC = () => {
                                     <Pie data={loadPieData} cx="50%" cy="50%" innerRadius={45} outerRadius={80} dataKey="value" labelLine={false} label={renderCustomLabel} stroke="none">
                                         {loadPieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                                     </Pie>
-                                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-card)', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)' }} formatter={(val) => [`${val} kW`, 'Load']} />
+                                    <Tooltip contentStyle={{ backgroundColor: 'var(--color-card)', borderColor: 'var(--color-border)', borderRadius: '6px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'white' }} itemStyle={{ color: 'white' }} formatter={(val) => [`${val} kW`, 'Load']} />
                                 </PieChart>
                             </ResponsiveContainer>
                         </div>
