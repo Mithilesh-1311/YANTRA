@@ -3,7 +3,8 @@
 //  All frontend pages use this instead of direct mock imports
 // ═══════════════════════════════════════════════════════════════
 
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'http://localhost:5000';
+const PROD_URL = 'https://yantra-jajt.onrender.com';
+const API_BASE = (import.meta as any).env?.VITE_API_URL || (import.meta.env.PROD ? PROD_URL : 'http://localhost:5000');
 
 async function apiFetch<T>(path: string): Promise<T> {
     const res = await fetch(`${API_BASE}${path}`);
