@@ -89,7 +89,7 @@ const Trading: React.FC = () => {
     const handleBuy = async (id: string, sourceName: string) => {
         try {
             if (!(window as any).ethereum) {
-                alert("MetaMask not detected");
+                alert("MetaMask not detected.Kindly download the required extensions and log in to your MetaMask Account.");
                 return;
             }
 
