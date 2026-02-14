@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ethers } from 'ethers';
-import { fetchAutoTradeCheck, postAutoTradeExecute } from '../services/api';
-import type { AutoTradeItem } from '../services/api';
+import { fetchAutoTradeCheck, postAutoTradeExecute, fetchAutoTradeLog } from '../services/api';
+import type { AutoTradeItem, AutoTradeLogEntry } from '../services/api';
 
 /* ─── Contract config (same as Trading.tsx) ─── */
 const CONTRACT_ADDRESS = '0xf3bab00B2cEF39f27838F1dDec3CA52db13Ee9eA';
@@ -12,6 +12,20 @@ const CONTRACT_ABI = [
             { internalType: 'uint256', name: '_energy', type: 'uint256' },
         ],
         name: 'buyFromBuilding',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+    },
+    {
+        inputs: [{ internalType: 'uint256', name: '_energy', type: 'uint256' }],
+        name: 'buyFromCentral',
+        outputs: [],
+        stateMutability: 'payable',
+        type: 'function',
+    },
+    {
+        inputs: [{ internalType: 'uint256', name: '_energy', type: 'uint256' }],
+        name: 'buyFromGrid',
         outputs: [],
         stateMutability: 'payable',
         type: 'function',
@@ -30,36 +44,58 @@ export type AutoTradeStatus =
     | 'error'
     | 'cooldown';
 
-export interface AutoTradeLogEntry {
-    id: string;
-    timestamp: Date;
-    buyerName: string;
-    sellerName: string;
-    energyKwh: number;
-    ethSpent: string;
-    txHash: string;
-    status: 'success' | 'failed';
-    error?: string;
-}
-
 export interface AutoTradeStats {
     totalTrades: number;
     totalEthSpent: number;
     totalEnergyAcquired: number;
 }
 
-const POLL_INTERVAL = 5000;     // 5 seconds
-const COOLDOWN_DURATION = 30000; // 30 seconds after each trade
+const POLL_INTERVAL = 10000;    // 10 seconds check
+const COOLDOWN_DURATION = 50000; // 50 seconds cooldown after trade
 
 export function useAutoTrade() {
-    const [enabled, setEnabled] = useState(false);
-    const [status, setStatus] = useState<AutoTradeStatus>('paused');
-    const [log, setLog] = useState<AutoTradeLogEntry[]>([]);
-    const [stats, setStats] = useState<AutoTradeStats>({
-        totalTrades: 0,
-        totalEthSpent: 0,
-        totalEnergyAcquired: 0,
+    const [enabled, setEnabled] = useState(() => {
+        try { return localStorage.getItem('autoTradeEnabled') === 'true'; }
+        catch { return false; }
     });
+    const [status, setStatus] = useState<AutoTradeStatus>(() => enabled ? 'idle' : 'paused');
+
+    // Persist enabled state to localStorage
+    useEffect(() => {
+        try { localStorage.setItem('autoTradeEnabled', String(enabled)); }
+        catch { /* ignore */ }
+    }, [enabled]);
+
+    const [log, setLog] = useState<AutoTradeLogEntry[]>([]);
+
+    // Derive stats from log (persists across refreshes as log is loaded)
+    const stats = useMemo(() => {
+        return log.reduce((acc, entry) => ({
+            totalTrades: acc.totalTrades + 1,
+            totalEthSpent: acc.totalEthSpent + parseFloat(entry.ethSpent || '0'),
+            totalEnergyAcquired: acc.totalEnergyAcquired + (entry.energyKwh || 0),
+        }), {
+            totalTrades: 0,
+            totalEthSpent: 0,
+            totalEnergyAcquired: 0,
+        });
+    }, [log]);
+
+    // Load persisted log from backend on mount
+    useEffect(() => {
+        fetchAutoTradeLog()
+            .then(entries => {
+                // Convert timestamp strings to Date objects if needed by UI, 
+                // though the UI code likely handles strings or Date objects. 
+                // Let's ensure consistency with the interface.
+                // The interface in api.ts says string, but local useAutoTrade state might expect Date.
+                // Let's check the local AutoTradeLogEntry definition in useAutoTrade.ts first.
+                // It seems useAutoTrade.ts has its own interface definition which might conflict.
+                // I will update the import to use the one from api.ts to avoid duplication.
+                setLog(entries);
+            })
+            .catch(err => console.error('Failed to load auto-trade log:', err));
+    }, []);
     const [pendingTrade, setPendingTrade] = useState<AutoTradeItem | null>(null);
     const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -107,12 +143,26 @@ export function useAutoTrade() {
 
             setStatus('confirming');
 
-            // 4. Execute the on-chain transaction
-            const tx = await contract.buyFromBuilding(
-                trade.sellerAddress,
-                trade.tradeAmountKwh,
-                { value: BigInt(trade.totalPriceWei) }
-            );
+            // 4. Execute the on-chain transaction based on trade type
+            let tx;
+            if (trade.type === 'Battery') {
+                tx = await contract.buyFromCentral(
+                    trade.tradeAmountKwh,
+                    { value: BigInt(trade.totalPriceWei) }
+                );
+            } else if (trade.type === 'Grid') {
+                tx = await contract.buyFromGrid(
+                    trade.tradeAmountKwh,
+                    { value: BigInt(trade.totalPriceWei) }
+                );
+            } else {
+                // P2P (default)
+                tx = await contract.buyFromBuilding(
+                    trade.sellerAddress,
+                    trade.tradeAmountKwh,
+                    { value: BigInt(trade.totalPriceWei) }
+                );
+            }
 
             await tx.wait();
 
@@ -135,7 +185,7 @@ export function useAutoTrade() {
             // Update local log
             const entry: AutoTradeLogEntry = {
                 id: `at-${Date.now()}`,
-                timestamp: new Date(),
+                timestamp: new Date().toISOString(),
                 buyerName: trade.buyerName,
                 sellerName: trade.sellerName,
                 energyKwh: trade.tradeAmountKwh,
@@ -145,11 +195,6 @@ export function useAutoTrade() {
             };
 
             setLog(prev => [entry, ...prev].slice(0, 50));
-            setStats(prev => ({
-                totalTrades: prev.totalTrades + 1,
-                totalEthSpent: prev.totalEthSpent + parseFloat(ethSpent),
-                totalEnergyAcquired: prev.totalEnergyAcquired + trade.tradeAmountKwh,
-            }));
 
             setStatus('completed');
             setPendingTrade(null);
@@ -180,7 +225,7 @@ export function useAutoTrade() {
 
             const entry: AutoTradeLogEntry = {
                 id: `at-${Date.now()}`,
-                timestamp: new Date(),
+                timestamp: new Date().toISOString(),
                 buyerName: trade.buyerName,
                 sellerName: trade.sellerName,
                 energyKwh: trade.tradeAmountKwh,
@@ -195,12 +240,13 @@ export function useAutoTrade() {
             setStatus('error');
             setPendingTrade(null);
 
-            // Longer recovery after failure to avoid spamming MetaMask
-            const recoveryTime = error?.code === 'ACTION_REJECTED' || error?.code === 4001 ? 60000 : 15000;
+            // Trigger cooldown even on failure/cancellation to prevent rapid retries
+            cooldownUntil.current = Date.now() + COOLDOWN_DURATION;
+
             setTimeout(() => {
                 setStatus('idle');
                 setErrorMessage(null);
-            }, recoveryTime);
+            }, COOLDOWN_DURATION);
         } finally {
             isBusy.current = false;
         }

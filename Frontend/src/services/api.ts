@@ -149,6 +149,7 @@ export interface AutoTradeItem {
     tradeAmountKwh: number;
     pricePerKwhWei: string;
     totalPriceWei: string;
+    type?: 'P2P' | 'Battery' | 'Grid';
 }
 
 export interface AutoTradeCheck {
@@ -175,6 +176,37 @@ export async function postAutoTradeExecute(data: {
     });
     if (!res.ok) throw new Error(`Auto-trade execute failed: ${res.status}`);
     return res.json();
+}
+
+export interface AutoTradeLogEntry {
+    id: string;
+    timestamp: string;
+    buyerName: string;
+    sellerName: string;
+    energyKwh: number;
+    ethSpent: string;
+    txHash: string;
+    status: 'success' | 'failed';
+    error?: string;
+}
+
+export async function fetchAutoTradeLog(): Promise<AutoTradeLogEntry[]> {
+    return apiFetch<AutoTradeLogEntry[]>('/api/auto-trade/log');
+}
+
+// ── Dynamic Trading Offers ───────────────────────────────────
+
+export interface TradingOffer {
+    id: string;
+    source: string;
+    type: 'Grid' | 'Battery' | 'P2P';
+    amount: number;
+    price: number;
+    status: string;
+}
+
+export async function fetchTradingOffers(): Promise<TradingOffer[]> {
+    return apiFetch<TradingOffer[]>('/api/trading/offers');
 }
 
 export { API_BASE };

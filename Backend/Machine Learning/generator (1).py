@@ -16,6 +16,9 @@ SPIKE: appliance event (AC, washing machine, etc.)
 
 import math, random, time, requests, threading, csv, os
 
+# Track which servers are currently unreachable (suppress repeated errors)
+_server_down = set()
+
 
 # List of servers to update simultaneously (Prod + Local)
 SERVER_URLS = [
@@ -177,8 +180,15 @@ def run_building(building_id, profile):
             for url in SERVER_URLS:
                 try:
                     requests.post(url, json=payload, timeout=1)
-                except Exception as e:
-                    print(f"  [{building_id}] Failed to send to {url}: {e}")
+                    # If previously down, log recovery
+                    if url in _server_down:
+                        _server_down.discard(url)
+                        print(f"  [{building_id}] ✅ Reconnected to {url}")
+                except Exception:
+                    # Only print once when server first becomes unreachable
+                    if url not in _server_down:
+                        _server_down.add(url)
+                        print(f"  [{building_id}] ⚠ Server unreachable: {url} (suppressing further errors)")
 
             sim_minute += 1
             # Reduced sleep to compensate for network latency (Local: ~0.15s, Remote: ~300ms latency + sleep)

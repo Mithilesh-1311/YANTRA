@@ -51,6 +51,28 @@ const liveBuildings = {};
 const buildingHistory = { B1: [], B2: [], B3: [], B4: [], B5: [] };
 const MAX_HISTORY = 200;
 
+// ═══════════════════════════════════════════════════════════════
+//  CENTRAL BATTERY STATE (depletes when bought, recharges from solar surplus)
+// ═══════════════════════════════════════════════════════════════
+const CENTRAL_BATTERY_CAP = 50;   // kWh
+let centralBatteryKwh = 40;        // starts at 40 kWh
+
+// Slowly recharge central battery from combined solar surplus each update tick
+function rechargeCentralBattery() {
+    if (!hasLiveData()) return;
+    const buildings = Object.values(liveBuildings);
+    const totalSurplus = buildings
+        .filter(b => !b.is_deficit)
+        .reduce((s, b) => s + Math.max(0, (b.solar_kw || 0) / 60 - (b.total_drained_kwh || 0)), 0);
+    // Trickle ~5% of surplus into central battery each tick
+    centralBatteryKwh = Math.min(CENTRAL_BATTERY_CAP, centralBatteryKwh + totalSurplus * 0.05);
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  AUTO-TRADE ACTIVITY LOG (persists across frontend refreshes)
+// ═══════════════════════════════════════════════════════════════
+const autoTradeLog = [];  // in-memory log, max 50 entries
+
 // Building metadata (names, types)
 const BUILDING_META = {
     B1: { name: 'Main Admin Block', btype: 'Residential' },
@@ -126,6 +148,9 @@ app.post('/update', (req, res) => {
         if (buildingHistory[bid].length > MAX_HISTORY) {
             buildingHistory[bid] = buildingHistory[bid].slice(-MAX_HISTORY);
         }
+
+        // Recharge central battery from surplus
+        rechargeCentralBattery();
 
         res.json({ status: 'ok' });
     } catch (err) {
@@ -321,29 +346,32 @@ app.get('/api/grid/overview', (_req, res) => {
     });
 });
 
-// ─── P2P Energy Transactions ───────────────────────────────────
+// ─── P2P Energy Transactions (all must involve Building 1) ────
 const transactions = [
-    { id: 1, from: 'Building 2', to: 'Building 3', energy: 15, status: 'In Progress', time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) },
-    { id: 2, from: 'Building 4', to: 'Building 1', energy: 10, status: 'Completed', time: '12:30 PM' },
-    { id: 3, from: 'Building 5', to: 'Building 3', energy: 12, status: 'Completed', time: '12:15 PM' },
-    { id: 4, from: 'Building 1', to: 'Building 4', energy: 8, status: 'Completed', time: '12:05 PM' },
-    { id: 5, from: 'Building 2', to: 'Building 5', energy: 8, status: 'Pending', time: '12:05 AM' },
-    { id: 6, from: 'Building 4', to: 'Central Battery', energy: 25, status: 'Completed', time: '11:30 AM' },
+    { id: 1, from: 'Building 3', to: 'Building 1', energy: 15, status: 'Completed', time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }) },
+    { id: 2, from: 'Building 5', to: 'Building 1', energy: 10, status: 'Completed', time: '12:30 PM' },
+    { id: 3, from: 'Central Battery', to: 'Building 1', energy: 12, status: 'Completed', time: '12:15 PM' },
+    { id: 4, from: 'Building 2', to: 'Building 1', energy: 8, status: 'Completed', time: '12:05 PM' },
 ];
 
 app.get('/api/transactions', (_req, res) => {
-    res.json(transactions);
+    // Only return transactions involving Building 1
+    const b1Txns = transactions.filter(t => t.from === 'Building 1' || t.to === 'Building 1');
+    res.json(b1Txns);
 });
 
-// Store new trade
+// Store new trade (enforce Building 1 involvement)
 app.post('/api/trades', async (req, res) => {
     try {
         const { from, to, energy, price, txHash, status, type } = req.body;
 
+        // Ensure Building 1 is always involved
+        const tradeTo = 'Building 1';
+
         const newTrade = {
             id: transactions.length + 1,
             from,
-            to,
+            to: tradeTo,
             energy,
             price,
             status: status || 'Completed',
@@ -351,6 +379,11 @@ app.post('/api/trades', async (req, res) => {
             txHash,
             type: type || 'manual'
         };
+
+        // Deduct from Central Battery if applicable
+        if (from === 'Central Battery Storage') {
+            centralBatteryKwh = Math.max(0, centralBatteryKwh - energy);
+        }
 
         // 1. Add to in-memory store for immediate UI update
         transactions.unshift(newTrade);
@@ -362,7 +395,7 @@ app.post('/api/trades', async (req, res) => {
                 .from('transactions')
                 .insert([{
                     from_entity: from,
-                    to_entity: to,
+                    to_entity: tradeTo,
                     energy_amount: energy,
                     price_per_unit: price,
                     tx_hash: txHash,
@@ -380,6 +413,61 @@ app.post('/api/trades', async (req, res) => {
         console.error('Error saving trade:', error);
         res.status(500).json({ success: false, error: 'Failed to save trade' });
     }
+});
+
+// ═══════════════════════════════════════════════════════════════
+//  DYNAMIC OFFERS ENDPOINT (live available, rate, status)
+// ═══════════════════════════════════════════════════════════════
+app.get('/api/trading/offers', (_req, res) => {
+    const offers = [];
+
+    // --- P2P Offers (from surplus buildings, cheapest) ---
+    const P2P_RATES = { B2: 0.12, B3: 0.11, B4: 0.13, B5: 0.14 };
+    for (const bid of ['B2', 'B3', 'B4', 'B5']) {
+        const live = liveBuildings[bid];
+        const fb = FALLBACK_BUILDINGS.find(b => b.id === bid);
+        let surplus = 0;
+        let isSurplus = false;
+
+        if (live) {
+            surplus = Math.max(0, (live.solar_kw || 0) - (live.total_drained_kwh || 0) * 60);
+            isSurplus = !live.is_deficit;
+        } else if (fb) {
+            surplus = Math.max(0, fb.solar - fb.load);
+            isSurplus = fb.status === 'Surplus';
+        }
+
+        offers.push({
+            id: bid.toLowerCase(),
+            source: `Building ${bid.replace('B', '')}`,
+            type: 'P2P',
+            amount: isSurplus ? +surplus.toFixed(1) : 0,
+            price: P2P_RATES[bid],
+            status: isSurplus && surplus > 0 ? 'Available' : 'No Surplus',
+        });
+    }
+
+    // --- Central Battery (medium price, depletes) ---
+    offers.push({
+        id: 'bat-01',
+        source: 'Central Battery Storage',
+        type: 'Battery',
+        amount: +centralBatteryKwh.toFixed(1),
+        price: 0.22,
+        status: centralBatteryKwh > 0.5 ? 'Available' : 'Depleted',
+    });
+
+    // --- Main Power Grid (most expensive, always available 24/7) ---
+    offers.push({
+        id: 'grid-01',
+        source: 'Main Power Grid',
+        type: 'Grid',
+        amount: 9999,
+        price: 0.30,
+        status: 'Available',
+    });
+
+    res.json(offers);
 });
 
 // ═══════════════════════════════════════════════════════════════
@@ -417,57 +505,99 @@ app.get('/api/auto-trade/check', (_req, res) => {
     try {
         const allBuildings = hasLiveData()
             ? Object.values(liveBuildings)
-            : getSimulatedBuildings();
+            : FALLBACK_BUILDINGS.map(b => ({ ...b, is_deficit: b.status === 'Deficit', solar_kw: b.solar, total_drained_kwh: b.load / 60 }));
 
-        // Find deficit buildings
-        const deficitBuildings = allBuildings.filter(b => b.is_deficit || b.status === 'Deficit');
+        // Only check Building 1 for deficit (all trades involve B1)
+        const b1 = allBuildings.find(b => b.id === 'B1');
+        if (!b1 || (!b1.is_deficit && b1.status !== 'Deficit')) {
+            return res.json({ needed: false, trades: [], reason: 'Building 1 is not in deficit' });
+        }
 
-        // Find surplus buildings and compute surplus amount
+        const deficitKwh = Math.max(0,
+            (b1.total_drained_kwh * 60 || b1.load || 0) -
+            (b1.solar_kw || b1.solar || 0)
+        );
+        if (deficitKwh <= 0) {
+            return res.json({ needed: false, trades: [], reason: 'Building 1 has no deficit' });
+        }
+
+        // --- FALLBACK PRIORITY: P2P → Central Battery → Main Grid ---
+        const trades = [];
+        let remainingDeficit = deficitKwh;
+
+        // 1. P2P: find surplus buildings (excluding B1)
         const surplusBuildings = allBuildings
-            .filter(b => !b.is_deficit && b.status !== 'Deficit')
+            .filter(b => b.id !== 'B1' && !b.is_deficit && b.status !== 'Deficit')
             .map(b => ({
                 ...b,
                 surplusKwh: Math.max(0, (b.solar_kw || b.solar || 0) - (b.total_drained_kwh * 60 || b.load || 0)),
             }))
             .filter(b => b.surplusKwh > 0)
-            .sort((a, b_item) => b_item.surplusKwh - a.surplusKwh); // highest surplus first
+            .sort((a, b_item) => b_item.surplusKwh - a.surplusKwh);
 
-        if (deficitBuildings.length === 0 || surplusBuildings.length === 0) {
-            return res.json({ needed: false, trades: [], reason: 'No deficit or no surplus buildings' });
-        }
-
-        const trades = [];
-
-        for (const buyer of deficitBuildings) {
-            // Pick the seller with the highest surplus
-            const seller = surplusBuildings[0];
-            if (!seller) continue;
-
-            const deficitKwh = Math.max(0,
-                (buyer.total_drained_kwh * 60 || buyer.load || 0) -
-                (buyer.solar_kw || buyer.solar || 0)
-            );
-
-            if (deficitKwh <= 0) continue;
-
-            // Trade amount = min(deficit, seller surplus)
-            const tradeAmountKwh = Math.min(deficitKwh, seller.surplusKwh);
+        for (const seller of surplusBuildings) {
+            if (remainingDeficit <= 0) break;
+            const tradeAmountKwh = Math.min(remainingDeficit, seller.surplusKwh);
             const tradeAmountInt = Math.ceil(tradeAmountKwh);
-
-            // Calculate total price in Wei
             const totalPriceWei = (BigInt(PRICE_PER_KWH_WEI) * BigInt(tradeAmountInt)).toString();
 
             trades.push({
-                buyerBuildingId: buyer.id,
-                buyerName: BUILDING_NAMES[buyer.id] || buyer.name || buyer.id,
+                buyerBuildingId: 'B1',
+                buyerName: 'Building 1',
                 sellerBuildingId: seller.id,
                 sellerName: BUILDING_NAMES[seller.id] || seller.name || seller.id,
                 sellerAddress: BUILDING_WALLETS[seller.id],
-                deficitKwh: +deficitKwh.toFixed(2),
+                deficitKwh: +remainingDeficit.toFixed(2),
                 surplusKwh: +seller.surplusKwh.toFixed(2),
                 tradeAmountKwh: tradeAmountInt,
                 pricePerKwhWei: PRICE_PER_KWH_WEI,
                 totalPriceWei,
+                type: 'P2P',
+            });
+            remainingDeficit -= tradeAmountKwh;
+        }
+
+        // 2. Central Battery (if still in deficit and battery has charge)
+        if (remainingDeficit > 0 && centralBatteryKwh > 0.5) {
+            const tradeAmountKwh = Math.min(remainingDeficit, centralBatteryKwh);
+            const tradeAmountInt = Math.ceil(tradeAmountKwh);
+            const CENTRAL_PRICE_WEI = '15000000000000'; // 0.000015 ETH
+            const totalPriceWei = (BigInt(CENTRAL_PRICE_WEI) * BigInt(tradeAmountInt)).toString();
+
+            trades.push({
+                buyerBuildingId: 'B1',
+                buyerName: 'Building 1',
+                sellerBuildingId: 'CENTRAL',
+                sellerName: 'Central Battery Storage',
+                sellerAddress: '0x0000000000000000000000000000000000000000',
+                deficitKwh: +remainingDeficit.toFixed(2),
+                surplusKwh: +centralBatteryKwh.toFixed(2),
+                tradeAmountKwh: tradeAmountInt,
+                pricePerKwhWei: CENTRAL_PRICE_WEI,
+                totalPriceWei,
+                type: 'Battery',
+            });
+            remainingDeficit -= tradeAmountKwh;
+        }
+
+        // 3. Main Power Grid (always available, most expensive)
+        if (remainingDeficit > 0) {
+            const tradeAmountInt = Math.ceil(remainingDeficit);
+            const GRID_PRICE_WEI = '20000000000000'; // 0.00002 ETH
+            const totalPriceWei = (BigInt(GRID_PRICE_WEI) * BigInt(tradeAmountInt)).toString();
+
+            trades.push({
+                buyerBuildingId: 'B1',
+                buyerName: 'Building 1',
+                sellerBuildingId: 'GRID',
+                sellerName: 'Main Power Grid',
+                sellerAddress: '0x0000000000000000000000000000000000000000',
+                deficitKwh: +remainingDeficit.toFixed(2),
+                surplusKwh: 9999,
+                tradeAmountKwh: tradeAmountInt,
+                pricePerKwhWei: GRID_PRICE_WEI,
+                totalPriceWei,
+                type: 'Grid',
             });
         }
 
@@ -476,6 +606,15 @@ app.get('/api/auto-trade/check', (_req, res) => {
         console.error('[/api/auto-trade/check] Error:', err.message);
         res.status(500).json({ needed: false, trades: [], error: 'Internal error' });
     }
+});
+
+/**
+ * GET /api/auto-trade/log
+ *
+ * Returns the persisted activity log so it survives page refreshes.
+ */
+app.get('/api/auto-trade/log', (_req, res) => {
+    res.json(autoTradeLog);
 });
 
 /**
@@ -489,11 +628,16 @@ app.post('/api/auto-trade/execute', async (req, res) => {
         const { buyerBuildingId, sellerBuildingId, energyKwh, txHash, priceWei } = req.body;
 
         // Adjust in-memory live data if available
-        if (liveBuildings[sellerBuildingId]) {
+        if (sellerBuildingId === 'CENTRAL') {
+            // Deduct from central battery
+            centralBatteryKwh = Math.max(0, centralBatteryKwh - energyKwh);
+        } else if (liveBuildings[sellerBuildingId]) {
             const seller = liveBuildings[sellerBuildingId];
             seller.solar_kw = Math.max(0, (seller.solar_kw || 0) - energyKwh);
             seller.solar = Math.max(0, (seller.solar || 0) - Math.round(energyKwh));
         }
+        // Grid has unlimited supply, no deduction needed
+
         if (liveBuildings[buyerBuildingId]) {
             const buyer = liveBuildings[buyerBuildingId];
             buyer.battery_kwh = Math.min(buyer.battery_cap, (buyer.battery_kwh || 0) + energyKwh);
@@ -502,11 +646,16 @@ app.post('/api/auto-trade/execute', async (req, res) => {
                 : buyer.battery;
         }
 
-        // Create trade record
+        // Determine seller display name
+        const sellerName = sellerBuildingId === 'CENTRAL' ? 'Central Battery Storage'
+            : sellerBuildingId === 'GRID' ? 'Main Power Grid'
+                : (BUILDING_NAMES[sellerBuildingId] || sellerBuildingId);
+
+        // Create trade record (always involves Building 1)
         const newTrade = {
             id: transactions.length + 1,
-            from: BUILDING_NAMES[sellerBuildingId] || sellerBuildingId,
-            to: BUILDING_NAMES[buyerBuildingId] || buyerBuildingId,
+            from: sellerName,
+            to: 'Building 1',
             energy: energyKwh,
             status: 'Completed',
             time: new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true }),
@@ -521,8 +670,8 @@ app.post('/api/auto-trade/execute', async (req, res) => {
             const { error } = await supabase
                 .from('transactions')
                 .insert([{
-                    from_entity: newTrade.from,
-                    to_entity: newTrade.to,
+                    from_entity: sellerName,
+                    to_entity: 'Building 1',
                     energy_amount: energyKwh,
                     price_per_unit: 0.00001,
                     tx_hash: txHash,
@@ -533,6 +682,23 @@ app.post('/api/auto-trade/execute', async (req, res) => {
         } catch (err) {
             console.warn('Supabase error:', err.message);
         }
+
+        // Save to activity log (persisted in-memory)
+        const ethSpent = priceWei
+            ? (Number(BigInt(priceWei)) / 1e18).toFixed(6)
+            : '0';
+        const logEntry = {
+            id: `at-${Date.now()}`,
+            timestamp: new Date().toISOString(),
+            buyerName: BUILDING_NAMES[buyerBuildingId] || buyerBuildingId,
+            sellerName,
+            energyKwh,
+            ethSpent,
+            txHash: txHash || '',
+            status: 'success',
+        };
+        autoTradeLog.unshift(logEntry);
+        if (autoTradeLog.length > 50) autoTradeLog.pop();
 
         res.status(201).json({ success: true, trade: newTrade });
     } catch (error) {

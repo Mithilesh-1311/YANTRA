@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { fetchBuildings, fetchGridOverview, API_BASE } from '../services/api';
+import { fetchBuildings, fetchGridOverview, fetchTradingOffers, API_BASE } from '../services/api';
 import {
     Battery, Activity, CheckCircle2, AlertCircle,
     Loader2, Zap, Building2, Power, ExternalLink,
@@ -59,16 +59,9 @@ interface EnergyOffer {
     type: 'Grid' | 'Battery' | 'P2P';
     amount: number;
     price: number;
+    status: string;
 }
 
-const mockOffers: EnergyOffer[] = [
-    { id: 'grid-01', source: 'Main Power Grid', type: 'Grid', amount: 9999, price: 0.30 },
-    { id: 'bat-01', source: 'Central Battery Storage', type: 'Battery', amount: 850, price: 0.22 },
-    { id: 'b2', source: 'Building 2', type: 'P2P', amount: 15.5, price: 0.12 },
-    { id: 'b3', source: 'Building 3', type: 'P2P', amount: 8.2, price: 0.11 },
-    { id: 'b4', source: 'Building 4', type: 'P2P', amount: 12.0, price: 0.13 },
-    { id: 'b5', source: 'Building 5', type: 'P2P', amount: 20.4, price: 0.14 },
-];
 
 /* ========================= */
 /* STATUS HELPER              */
@@ -88,7 +81,7 @@ const STATUS_CONFIG: Record<AutoTradeStatus, { label: string; color: string; pul
 
 const Trading: React.FC = () => {
     // --- STATE ---
-    const [offers, setOffers] = useState<EnergyOffer[]>(mockOffers);
+    const [offers, setOffers] = useState<EnergyOffer[]>([]);
     const [offerStatus, setOfferStatus] = useState<Record<string, 'idle' | 'processing' | 'completed'>>({});
     const [requiredEnergy, setRequiredEnergy] = useState<number>(0);
 
@@ -108,9 +101,10 @@ const Trading: React.FC = () => {
 
     const refreshStats = useCallback(async () => {
         try {
-            const [buildings, grid] = await Promise.all([
+            const [buildings, grid, liveOffers] = await Promise.all([
                 fetchBuildings(),
                 fetchGridOverview(),
+                fetchTradingOffers(),
             ]);
             setBuyers(buildings.filter(b => b.status === 'Deficit').length);
             setSellers(buildings.filter(b => b.status === 'Surplus').length);
@@ -118,33 +112,45 @@ const Trading: React.FC = () => {
             setGridStability(grid.gridStability);
 
             // Update Building 1's deficit/surplus from real data
+            // RULE: Once in deficit, stay in deficit until a confirmed purchase
+            //       brings requiredEnergy to 0. Live data can only INCREASE the
+            //       deficit (if it worsens), never auto-flip to surplus.
             const b1 = buildings.find(b => b.id === 'B1');
             if (b1) {
-                const deficit = b1.load - b1.solar;
-                setRequiredEnergy(deficit > 0 ? +deficit.toFixed(1) : +(deficit).toFixed(1));
+                const liveDeficit = +(b1.load - b1.solar).toFixed(1);
+                setRequiredEnergy(prev => {
+                    if (prev > 0) {
+                        // Currently in deficit: only allow deficit to increase,
+                        // never auto-decrease from live data
+                        return liveDeficit > prev ? liveDeficit : prev;
+                    }
+                    // Currently surplus/balanced: allow live data to set new deficit
+                    return liveDeficit > 0 ? liveDeficit : liveDeficit;
+                });
             }
 
-            // Update P2P offer amounts from live data (surplus buildings)
-            setOffers(prev => prev.map(offer => {
-                if (offer.type !== 'P2P') return offer;
-                const matchingBuilding = buildings.find(b => b.name === offer.source || `Building ${b.id.replace('B', '')}` === offer.source);
-                if (matchingBuilding && matchingBuilding.status === 'Surplus') {
-                    return { ...offer, amount: Math.max(0, +(matchingBuilding.solar - matchingBuilding.load).toFixed(1)) };
-                } else if (matchingBuilding && matchingBuilding.status === 'Deficit') {
-                    return { ...offer, amount: 0 };
-                }
-                return offer;
-            }));
+            // Update offers from backend (preserving processing/completed status from UI)
+            setOffers(prev => {
+                return liveOffers.map(offer => {
+                    const existing = prev.find(p => p.id === offer.id);
+                    // Keep local amount reduction if a purchase was just made
+                    const localStatus = offerStatus[offer.id];
+                    if (localStatus === 'completed') {
+                        return existing || offer;
+                    }
+                    return offer;
+                });
+            });
         } catch (err) {
             console.warn('[Trading] API fallback:', err);
         }
-    }, []);
+    }, [offerStatus]);
 
     useEffect(() => {
         refreshStats();
         const id = setInterval(refreshStats, 5000);
         return () => clearInterval(id);
-    }, []);
+    }, [refreshStats]);
 
     // --- DERIVED STATE ---
     const currentStatus = requiredEnergy > 0 ? 'Deficit' : 'Surplus';
@@ -443,7 +449,7 @@ const Trading: React.FC = () => {
                                             </div>
                                             <div className="text-right flex items-center gap-3">
                                                 <span className="text-[10px] text-[var(--color-text-dim)]" style={{ fontFamily: 'var(--font-mono)' }}>
-                                                    {entry.timestamp.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
+                                                    {new Date(entry.timestamp).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true })}
                                                 </span>
                                                 {entry.txHash && (
                                                     <a
@@ -607,8 +613,14 @@ const Trading: React.FC = () => {
                                                 <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-positive)]">
                                                     <CheckCircle2 size={12} /> Completed
                                                 </span>
+                                            ) : offer.status === 'Depleted' || offer.status === 'No Surplus' ? (
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-text-muted)]">
+                                                    <AlertCircle size={12} /> {offer.status}
+                                                </span>
                                             ) : (
-                                                <span className="text-xs text-[var(--color-text-muted)]">Available</span>
+                                                <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[var(--color-positive)]">
+                                                    <CheckCircle2 size={12} /> Available
+                                                </span>
                                             )}
                                         </td>
                                         <td style={{ textAlign: 'center' }}>
