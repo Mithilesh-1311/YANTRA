@@ -117,16 +117,11 @@ const Trading: React.FC = () => {
             //       deficit (if it worsens), never auto-flip to surplus.
             const b1 = buildings.find(b => b.id === 'B1');
             if (b1) {
-                const liveDeficit = +(b1.load - b1.solar).toFixed(1);
-                setRequiredEnergy(prev => {
-                    if (prev > 0) {
-                        // Currently in deficit: only allow deficit to increase,
-                        // never auto-decrease from live data
-                        return liveDeficit > prev ? liveDeficit : prev;
-                    }
-                    // Currently surplus/balanced: allow live data to set new deficit
-                    return liveDeficit > 0 ? liveDeficit : liveDeficit;
-                });
+                // Calculate net energy: Load - Solar
+                // Positive = Deficit (Need to buy)
+                // Negative = Surplus (Can sell)
+                const liveNet = +(b1.load - b1.solar).toFixed(1);
+                setRequiredEnergy(liveNet);
             }
 
             // Update offers from backend (preserving processing/completed status from UI)

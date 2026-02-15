@@ -192,7 +192,7 @@ def run_building(building_id, profile):
 
             sim_minute += 1
             # Reduced sleep to compensate for network latency (Local: ~0.15s, Remote: ~300ms latency + sleep)
-            time.sleep(0.01) 
+            time.sleep(0.085) 
     except Exception as e:
         print(f"\n❌ [{building_id}] THREAD CRASHED: {e}\n")
         import traceback
@@ -210,10 +210,10 @@ if __name__ == "__main__":
         )
         t.start()
         print(f"  Started {building_id} — {profile['btype']}  (solar={profile['peak_solar']}kW  bat={profile['battery_cap']}kWh  x{profile['base_mult']} consumption)")
-        time.sleep(0.25)
+        time.sleep(0.1)
 
     print("\nAll 5 buildings running. Ctrl+C to stop.\n")
     try:
-        while True: time.sleep(1)
+        while True: time.sleep(0.1)
     except KeyboardInterrupt:
         print("\nStopped.")

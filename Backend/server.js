@@ -526,13 +526,15 @@ app.get('/api/auto-trade/check', (_req, res) => {
         let remainingDeficit = deficitKwh;
 
         // 1. P2P: find surplus buildings (excluding B1)
+        // REVISED LOGIC: Just check if they have net positive flow (Solar > Load),
+        // regardless of whether they are charging their own battery or not.
         const surplusBuildings = allBuildings
-            .filter(b => b.id !== 'B1' && !b.is_deficit && b.status !== 'Deficit')
+            .filter(b => b.id !== 'B1')
             .map(b => ({
                 ...b,
                 surplusKwh: Math.max(0, (b.solar_kw || b.solar || 0) - (b.total_drained_kwh * 60 || b.load || 0)),
             }))
-            .filter(b => b.surplusKwh > 0)
+            .filter(b => b.surplusKwh > 0.1) // Only tangible surplus
             .sort((a, b_item) => b_item.surplusKwh - a.surplusKwh);
 
         for (const seller of surplusBuildings) {
