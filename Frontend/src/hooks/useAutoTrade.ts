@@ -70,11 +70,15 @@ export function useAutoTrade() {
 
     // Derive stats from log (persists across refreshes as log is loaded)
     const stats = useMemo(() => {
-        return log.reduce((acc, entry) => ({
-            totalTrades: acc.totalTrades + 1,
-            totalEthSpent: acc.totalEthSpent + parseFloat(entry.ethSpent || '0'),
-            totalEnergyAcquired: acc.totalEnergyAcquired + (entry.energyKwh || 0),
-        }), {
+        return log.reduce((acc, entry) => {
+            // Only count successful trades in stats
+            if (entry.status !== 'success') return acc;
+            return {
+                totalTrades: acc.totalTrades + 1,
+                totalEthSpent: acc.totalEthSpent + parseFloat(entry.ethSpent || '0'),
+                totalEnergyAcquired: acc.totalEnergyAcquired + (entry.energyKwh || 0),
+            };
+        }, {
             totalTrades: 0,
             totalEthSpent: 0,
             totalEnergyAcquired: 0,
@@ -166,23 +170,8 @@ export function useAutoTrade() {
 
             await tx.wait();
 
-            // Calculate ETH spent for display
+            // SUCCESS! Update UI immediately
             const ethSpent = ethers.formatEther(BigInt(trade.totalPriceWei));
-
-            // Log to backend
-            try {
-                await postAutoTradeExecute({
-                    buyerBuildingId: trade.buyerBuildingId,
-                    sellerBuildingId: trade.sellerBuildingId,
-                    energyKwh: trade.tradeAmountKwh,
-                    txHash: tx.hash,
-                    priceWei: trade.totalPriceWei,
-                });
-            } catch (err) {
-                console.error('Failed to log auto-trade to backend:', err);
-            }
-
-            // Update local log
             const entry: AutoTradeLogEntry = {
                 id: `at-${Date.now()}`,
                 timestamp: new Date().toISOString(),
@@ -195,9 +184,17 @@ export function useAutoTrade() {
             };
 
             setLog(prev => [entry, ...prev].slice(0, 50));
-
             setStatus('completed');
             setPendingTrade(null);
+
+            // Log to backend (non-blocking for UI update)
+            postAutoTradeExecute({
+                buyerBuildingId: trade.buyerBuildingId,
+                sellerBuildingId: trade.sellerBuildingId,
+                energyKwh: trade.tradeAmountKwh,
+                txHash: tx.hash,
+                priceWei: trade.totalPriceWei,
+            }).catch(err => console.error('Failed to log auto-trade to backend:', err));
 
             // Start cooldown
             cooldownUntil.current = Date.now() + COOLDOWN_DURATION;
