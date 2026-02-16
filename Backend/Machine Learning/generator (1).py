@@ -142,6 +142,10 @@ def dummy_update():
     print("⚠ WARNING: Generator is POSTing to itself! Check your SERVER_URL environment variable.")
     return "Self-update blocked", 400
 
+def run_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
 if __name__ == "__main__":
     threading.Thread(target=run_health_server, daemon=True).start()
     print("Starting optimized generator (Single-loop mode)...\n")
