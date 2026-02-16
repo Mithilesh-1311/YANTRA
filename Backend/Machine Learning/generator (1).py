@@ -15,6 +15,7 @@ SPIKE: appliance event (AC, washing machine, etc.)
 """
 
 import math, random, time, requests, threading, csv, os
+from flask import Flask
 
 # Track which servers are currently unreachable (suppress repeated errors)
 _server_down = set()
@@ -201,8 +202,20 @@ def run_building(building_id, profile):
         traceback.print_exc()
 
 
+# ── Health Check Server (to keep Render Free Tier happy) ──────
+app = Flask(__name__)
+@app.route('/')
+def health(): return "Generator is running"
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
+
 # ── Launch all 5 buildings in parallel ───────────────────────
 if __name__ == "__main__":
+    # Start health check server in a background thread
+    threading.Thread(target=run_health_server, daemon=True).start()
+    
     print("Starting 5 buildings...\n")
     for building_id, profile in PROFILES.items():
         t = threading.Thread(

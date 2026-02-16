@@ -21,8 +21,8 @@ COPY Machine\ Learning/ ./Machine\ Learning/
 COPY Models/ ./Models/
 COPY data/ ./data/
 
-# Make port 5000 available to the world outside this container (if needed)
-#EXPOSE 5000
+# Make port 10000 available to the world outside this container
+EXPOSE 10000
 
 # Define environment variable
 ENV SERVER_URL=https://yantra-jajt.onrender.com/update
