@@ -6,10 +6,16 @@ _server_down = set()
 
 # Use environment variable SERVER_URL if provided
 ENV_SERVER_URL = os.getenv("SERVER_URL")
-SERVER_URLS = [ENV_SERVER_URL] if ENV_SERVER_URL else [
-    "https://yantra-jajt.onrender.com/update",
-    "http://127.0.0.1:5000/update"
-]
+if ENV_SERVER_URL:
+    # Ensure it ends with /update
+    if not ENV_SERVER_URL.endswith('/update'):
+        ENV_SERVER_URL = ENV_SERVER_URL.rstrip('/') + '/update'
+    SERVER_URLS = [ENV_SERVER_URL]
+else:
+    SERVER_URLS = [
+        "https://yantra-jajt.onrender.com/update",
+        "http://127.0.0.1:5000/update"
+    ]
 DATA_DIR = "data"
 SOLAR_EFF = 0.6
 
@@ -131,9 +137,10 @@ app = Flask(__name__)
 @app.route('/')
 def health(): return "Optimized Generator Running"
 
-def run_health_server():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+@app.route('/update', methods=['POST'])
+def dummy_update(): 
+    print("⚠ WARNING: Generator is POSTing to itself! Check your SERVER_URL environment variable.")
+    return "Self-update blocked", 400
 
 if __name__ == "__main__":
     threading.Thread(target=run_health_server, daemon=True).start()

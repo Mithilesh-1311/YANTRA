@@ -58,14 +58,23 @@ const CENTRAL_BATTERY_CAP = 50;   // kWh
 let centralBatteryKwh = 40;        // starts at 40 kWh
 
 // Slowly recharge central battery from combined solar surplus each update tick
+// Also apply a small base load drain (e.g., streetlights, common areas)
 function rechargeCentralBattery() {
     if (!hasLiveData()) return;
     const buildings = Object.values(liveBuildings);
+
+    // 1. Recharge from solar surplus
     const totalSurplus = buildings
         .filter(b => !b.is_deficit)
-        .reduce((s, b) => s + Math.max(0, (b.solar_kw || 0) / 60 - (b.total_drained_kwh || 0)), 0);
+        .reduce((s, b_item) => s + Math.max(0, (b_item.solar_kw || 0) / 60 - (b_item.total_drained_kwh || 0)), 0);
+
     // Trickle ~5% of surplus into central battery each tick
     centralBatteryKwh = Math.min(CENTRAL_BATTERY_CAP, centralBatteryKwh + totalSurplus * 0.05);
+
+    // 2. Base Load Drain (Depletes battery slowly even without trades, especially at night)
+    // Drains ~0.02 kWh per update tick (simulated minute)
+    const baseDrain = 0.02;
+    centralBatteryKwh = Math.max(0, centralBatteryKwh - baseDrain);
 }
 
 // ═══════════════════════════════════════════════════════════════
