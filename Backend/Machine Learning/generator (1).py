@@ -21,7 +21,9 @@ _server_down = set()
 
 
 # List of servers to update simultaneously (Prod + Local)
-SERVER_URLS = [
+# Use environment variable SERVER_URL if provided, else fall back to hardcoded defaults
+ENV_SERVER_URL = os.getenv("SERVER_URL")
+SERVER_URLS = [ENV_SERVER_URL] if ENV_SERVER_URL else [
     "https://yantra-jajt.onrender.com/update",
     "http://127.0.0.1:5000/update"
 ]
