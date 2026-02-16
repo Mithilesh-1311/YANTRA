@@ -110,12 +110,19 @@ def update_building(bid, profile, state):
     # Send to server (Using session is MUCH faster)
     for url in SERVER_URLS:
         try:
-            session.post(url, json=payload, timeout=0.5)
-            if url in _server_down: _server_down.discard(url)
-        except:
+            resp = session.post(url, json=payload, timeout=0.8)
+            if resp.status_code == 200:
+                if url in _server_down:
+                    _server_down.discard(url)
+                    print(f"✅ Reconnected to {url}")
+            else:
+                if url not in _server_down:
+                    _server_down.add(url)
+                    print(f"⚠ Server returned {resp.status_code} for {url}: {resp.text[:100]}")
+        except Exception as e:
             if url not in _server_down:
                 _server_down.add(url)
-                print(f"⚠ Server unreachable: {url}")
+                print(f"⚠ Connection failed to {url}: {str(e)}")
 
     state["sim_minute"] += 1
 
