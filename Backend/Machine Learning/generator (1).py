@@ -139,6 +139,7 @@ def health(): return "Optimized Generator Running"
 
 @app.route('/update', methods=['POST'])
 def dummy_update(): 
+    # Force rebuild comment to fix persistent NameError on Render
     print("⚠ WARNING: Generator is POSTing to itself! Check your SERVER_URL environment variable.")
     return "Self-update blocked", 400
 
